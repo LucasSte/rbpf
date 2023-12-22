@@ -27,17 +27,20 @@ impl SBPFVersion {
 
     /// Enable the negation instruction
     pub fn enable_neg(&self) -> bool {
-        self == &SBPFVersion::V1
+        // self == &SBPFVersion::V1
+        false
     }
 
     /// Swaps the reg and imm operands of the subtraction instruction
     pub fn swap_sub_reg_imm_operands(&self) -> bool {
-        self != &SBPFVersion::V1
+        // self != &SBPFVersion::V1
+        true
     }
 
     /// Disable the only two slots long instruction: LD_DW_IMM
     pub fn disable_lddw(&self) -> bool {
-        self != &SBPFVersion::V1
+        //self != &SBPFVersion::V1
+        true
     }
 
     /// Enable the BPF_PQR instruction class
@@ -64,7 +67,8 @@ impl SBPFVersion {
 
     /// Use dynamic stack frame sizes
     pub fn dynamic_stack_frames(&self) -> bool {
-        self != &SBPFVersion::V1
+        //self != &SBPFVersion::V1
+        true
     }
 
     /// Support syscalls via pseudo calls (insn.src = 0)
