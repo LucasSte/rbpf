@@ -3959,7 +3959,12 @@ fn alu_32_v2() {
         enable_sbpf_v2: true,
         .. Config::default()
     };
-    test_interpreter_and_jit_asm!(
+
+    use std::time::Instant;
+    let now = Instant::now();
+
+    for _ in 0..20 {
+        test_interpreter_and_jit_asm!(
         "
         mov32 r2, 20
         mov32 r3, r2
@@ -3996,7 +4001,11 @@ fn alu_32_v2() {
         (),
         TestContextObject::new(29),
         ProgramResult::Ok(0),
-    )
+    );
+    }
+
+    let elapsed = now.elapsed();
+    println!("Elapsed: {:.2?}", elapsed);
 }
 
 #[test]
