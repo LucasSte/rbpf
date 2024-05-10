@@ -3920,7 +3920,7 @@ fn alu_32_v1() {
     use std::time::Instant;
     let now = Instant::now();
 
-    for _ in 0..100 {
+    for _ in 0..1000 {
         test_interpreter_and_jit_asm!(
             "
             mov32 r2, 20
@@ -3972,7 +3972,7 @@ fn alu_32_v2() {
     use std::time::Instant;
     let now = Instant::now();
 
-    for _ in 0..100 {
+    for _ in 0..1000 {
         test_interpreter_and_jit_asm!(
         "
         mov32 r2, 20
@@ -4027,7 +4027,7 @@ fn alu_64_v1() {
     use std::time::Instant;
     let now = Instant::now();
 
-    for _ in 0..100 {
+    for _ in 0..1000 {
         test_interpreter_and_jit_asm!(
             "
             mov64 r2, 20
@@ -4079,7 +4079,7 @@ fn alu_64_v2() {
     use std::time::Instant;
     let now = Instant::now();
 
-    for _ in 0..100 {
+    for _ in 0..1000 {
         test_interpreter_and_jit_asm!(
             "
             mov64 r2, 20
