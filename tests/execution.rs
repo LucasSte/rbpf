@@ -3916,41 +3916,50 @@ fn alu_32_v1() {
         enable_sbpf_v2: false,
         .. Config::default()
     };
-    test_interpreter_and_jit_asm!(
-        "
-        mov32 r2, 20
-        mov32 r3, r2
-        add32 r1, 45
-        add32 r1, r2
-        sub32 r1, 50
-        sub32 r1, r2
-        mul32 r1, -90
-        mul32 r1, r2
-        div32 r1, 45
-        div32 r1, r2
-        or32 r1, 0xff
-        or32 r1, r2
-        and32 r1, 0xff
-        and32 r1, r2
-        lsh32 r1, 3
-        lsh32 r1, r2
-        rsh32 r1, 3
-        rsh32 r1, r2
-        neg32 r2
-        mod32 r1, 6
-        mod32 r2, r1
-        xor32 r1, 128
-        xor32 r1, r2
-        arsh32 r1, 3
-        arsh32 r1, r2
-        exit
-        ",
-        config,
-        [],
-        (),
-        TestContextObject::new(26),
-        ProgramResult::Ok(0),
-    )
+
+    use std::time::Instant;
+    let now = Instant::now();
+
+    for _ in 0..100 {
+        test_interpreter_and_jit_asm!(
+            "
+            mov32 r2, 20
+            mov32 r3, r2
+            add32 r1, 45
+            add32 r1, r2
+            sub32 r1, 50
+            sub32 r1, r2
+            mul32 r1, -90
+            mul32 r1, r2
+            div32 r1, 45
+            div32 r1, r2
+            or32 r1, 0xff
+            or32 r1, r2
+            and32 r1, 0xff
+            and32 r1, r2
+            lsh32 r1, 3
+            lsh32 r1, r2
+            rsh32 r1, 3
+            rsh32 r1, r2
+            neg32 r2
+            mod32 r1, 6
+            mod32 r2, r1
+            xor32 r1, 128
+            xor32 r1, r2
+            arsh32 r1, 3
+            arsh32 r1, r2
+            exit
+            ",
+            config,
+            [],
+            (),
+            TestContextObject::new(26),
+            ProgramResult::Ok(0),
+        );
+    }
+
+    let elapsed = now.elapsed();
+    println!("Elapsed: {:.2?}", elapsed);
 }
 
 #[test]
@@ -3963,7 +3972,7 @@ fn alu_32_v2() {
     use std::time::Instant;
     let now = Instant::now();
 
-    for _ in 0..20 {
+    for _ in 0..100 {
         test_interpreter_and_jit_asm!(
         "
         mov32 r2, 20
@@ -4014,41 +4023,50 @@ fn alu_64_v1() {
         enable_sbpf_v2: false,
         .. Config::default()
     };
-    test_interpreter_and_jit_asm!(
-        "
-        mov64 r2, 20
-        mov64 r3, r2
-        add64 r1, 45
-        add64 r1, r2
-        sub64 r1, 50
-        sub64 r1, r2
-        mul64 r1, -90
-        mul64 r1, r2
-        div64 r1, 45
-        div64 r1, r2
-        or64 r1, 0xff
-        or64 r1, r2
-        and64 r1, 0xff
-        and64 r1, r2
-        lsh64 r1, 3
-        lsh64 r1, r2
-        rsh64 r1, 3
-        rsh64 r1, r2
-        neg64 r2
-        mod64 r1, 6
-        mod64 r2, r1
-        xor64 r1, 128
-        xor64 r1, r2
-        arsh64 r1, 3
-        arsh64 r1, r2
-        exit
-        ",
-        config,
-        [],
-        (),
-        TestContextObject::new(26),
-        ProgramResult::Ok(0),
-    )
+
+    use std::time::Instant;
+    let now = Instant::now();
+
+    for _ in 0..100 {
+        test_interpreter_and_jit_asm!(
+            "
+            mov64 r2, 20
+            mov64 r3, r2
+            add64 r1, 45
+            add64 r1, r2
+            sub64 r1, 50
+            sub64 r1, r2
+            mul64 r1, -90
+            mul64 r1, r2
+            div64 r1, 45
+            div64 r1, r2
+            or64 r1, 0xff
+            or64 r1, r2
+            and64 r1, 0xff
+            and64 r1, r2
+            lsh64 r1, 3
+            lsh64 r1, r2
+            rsh64 r1, 3
+            rsh64 r1, r2
+            neg64 r2
+            mod64 r1, 6
+            mod64 r2, r1
+            xor64 r1, 128
+            xor64 r1, r2
+            arsh64 r1, 3
+            arsh64 r1, r2
+            exit
+            ",
+            config,
+            [],
+            (),
+            TestContextObject::new(26),
+            ProgramResult::Ok(0),
+        );
+    }
+
+    let elapsed = now.elapsed();
+    println!("Elapsed: {:.2?}", elapsed);
 }
 
 #[test]
@@ -4057,42 +4075,51 @@ fn alu_64_v2() {
         enable_sbpf_v2: true,
         .. Config::default()
     };
-    test_interpreter_and_jit_asm!(
-        "
-        mov64 r2, 20
-        mov64 r3, r2
-        add64 r1, 45
-        add64 r1, r2
-        sub64 r1, 50
-        sub64 r1, r2
-        lmul64 r1, -90
-        lmul64 r1, r2
-        sdiv64 r1, 45
-        sdiv64 r1, r2
-        udiv64 r1, 45
-        udiv64 r1, r2
-        or64 r1, 0xff
-        or64 r1, r2
-        and64 r1, 0xff
-        and64 r1, r2
-        lsh64 r1, 3
-        lsh64 r1, r2
-        rsh64 r1, 3
-        rsh64 r1, r2
-        urem64 r1, 6
-        urem64 r2, r1
-        srem64 r1, 6
-        srem64 r2, r1
-        xor64 r1, 128
-        xor64 r1, r2
-        arsh64 r1, 3
-        arsh64 r1, r2
-        exit
-        ",
-        config,
-        [],
-        (),
-        TestContextObject::new(29),
-        ProgramResult::Ok(0),
-    )
+
+    use std::time::Instant;
+    let now = Instant::now();
+
+    for _ in 0..100 {
+        test_interpreter_and_jit_asm!(
+            "
+            mov64 r2, 20
+            mov64 r3, r2
+            add64 r1, 45
+            add64 r1, r2
+            sub64 r1, 50
+            sub64 r1, r2
+            lmul64 r1, -90
+            lmul64 r1, r2
+            sdiv64 r1, 45
+            sdiv64 r1, r2
+            udiv64 r1, 45
+            udiv64 r1, r2
+            or64 r1, 0xff
+            or64 r1, r2
+            and64 r1, 0xff
+            and64 r1, r2
+            lsh64 r1, 3
+            lsh64 r1, r2
+            rsh64 r1, 3
+            rsh64 r1, r2
+            urem64 r1, 6
+            urem64 r2, r1
+            srem64 r1, 6
+            srem64 r2, r1
+            xor64 r1, 128
+            xor64 r1, r2
+            arsh64 r1, 3
+            arsh64 r1, r2
+            exit
+            ",
+            config,
+            [],
+            (),
+            TestContextObject::new(29),
+            ProgramResult::Ok(0),
+        );
+    }
+
+    let elapsed = now.elapsed();
+    println!("Elapsed: {:.2?}", elapsed);
 }
