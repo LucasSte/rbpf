@@ -3949,7 +3949,7 @@ fn alu_32_v1() {
         [],
         (),
         TestContextObject::new(3),
-        ProgramResult::Ok(0xc),
+        ProgramResult::Ok(0),
     )
 }
 
@@ -3989,12 +3989,13 @@ fn alu_32_v2() {
         xor32 r1, r2
         arsh32 r1, 3
         arsh32 r1, r2
+        exit
         ",
         config,
         [],
         (),
         TestContextObject::new(3),
-        ProgramResult::Ok(0xc),
+        ProgramResult::Ok(0),
     )
 }
 
@@ -4031,12 +4032,13 @@ fn alu_64_v1() {
         xor64 r1, r2
         arsh64 r1, 3
         arsh64 r1, r2
+        exit
         ",
         config,
         [],
         (),
         TestContextObject::new(3),
-        ProgramResult::Ok(0xc),
+        ProgramResult::Ok(0),
     )
 }
 
@@ -4076,11 +4078,12 @@ fn alu_64_v2() {
         xor64 r1, r2
         arsh64 r1, 3
         arsh64 r1, r2
+        exit
         ",
         config,
         [],
         (),
         TestContextObject::new(3),
-        ProgramResult::Ok(0xc),
+        ProgramResult::Ok(0),
     )
 }
