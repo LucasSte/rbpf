@@ -3948,7 +3948,7 @@ fn alu_32_v1() {
         config,
         [],
         (),
-        TestContextObject::new(3),
+        TestContextObject::new(26),
         ProgramResult::Ok(0),
     )
 }
