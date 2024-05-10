@@ -3943,6 +3943,7 @@ fn alu_32_v1() {
         xor32 r1, r2
         arsh32 r1, 3
         arsh32 r1, r2
+        exit
         ",
         config,
         [],
