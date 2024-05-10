@@ -3994,7 +3994,7 @@ fn alu_32_v2() {
         config,
         [],
         (),
-        TestContextObject::new(3),
+        TestContextObject::new(29),
         ProgramResult::Ok(0),
     )
 }
@@ -4037,7 +4037,7 @@ fn alu_64_v1() {
         config,
         [],
         (),
-        TestContextObject::new(3),
+        TestContextObject::new(26),
         ProgramResult::Ok(0),
     )
 }
@@ -4083,7 +4083,7 @@ fn alu_64_v2() {
         config,
         [],
         (),
-        TestContextObject::new(3),
+        TestContextObject::new(29),
         ProgramResult::Ok(0),
     )
 }
