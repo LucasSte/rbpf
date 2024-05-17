@@ -26,6 +26,7 @@ gdbstub = { version = "0.6.2", optional = true }
 goblin = "0.5.1"
 hash32 = "0.2.0"
 log = "0.4.2"
+loom = {path = "/Users/lucasste/Documents/loom"}
 rand = { version = "0.8.5", features = ["small_rng"]}
 rustc-demangle = "0.1"
 scroll = "0.11"
@@ -42,6 +43,7 @@ default = ["jit"]
 jit = ["libc", "winapi"]
 fuzzer-not-safe-for-production = ["arbitrary"]
 debugger = ["gdbstub"]
+loom-test = []
 
 [dev-dependencies]
 elf = "0.0.10"

@@ -30,7 +30,13 @@ use crate::{
 #[cfg(all(feature = "jit", not(target_os = "windows"), target_arch = "x86_64"))]
 use crate::jit::{JitCompiler, JitProgram};
 use byteorder::{ByteOrder, LittleEndian};
-use std::{collections::BTreeMap, fmt::Debug, mem, ops::Range, str, sync::Arc};
+use std::{collections::BTreeMap, fmt::Debug, mem, ops::Range, str};
+
+#[cfg(not(feature = "loom-test"))]
+use std::sync::Arc;
+
+#[cfg(feature = "loom-test")]
+use loom::sync::Arc;
 
 /// Error definitions
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]

@@ -22,7 +22,13 @@ use crate::{
     static_analysis::{Analysis, TraceLogEntry},
 };
 use rand::Rng;
-use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
+use std::{collections::BTreeMap, fmt::Debug};
+
+#[cfg(not(feature = "loom-test"))]
+use std::sync::Arc;
+
+#[cfg(feature = "loom-test")]
+use loom::sync::Arc;
 
 /// Shift the RUNTIME_ENVIRONMENT_KEY by this many bits to the LSB
 ///

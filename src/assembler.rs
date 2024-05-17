@@ -22,7 +22,14 @@ use crate::{
     program::{BuiltinProgram, FunctionRegistry, SBPFVersion},
     vm::ContextObject,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap};
+
+#[cfg(not(feature = "loom-test"))]
+use std::sync::Arc;
+
+#[cfg(feature = "loom-test")]
+use loom::sync::Arc;
+
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum InstructionType {
