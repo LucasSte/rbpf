@@ -74,7 +74,7 @@ parser! {
 
 parser! {
     fn register[I]()(I) -> i64 where [I: Stream<Item=char>] {
-        one_of('rw'.chars())
+        one_of("rw".chars())
             .with(many1(digit()))
             .map(|x: String| x.parse::<i64>().unwrap_or(0))
     }
