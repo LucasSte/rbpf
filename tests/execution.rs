@@ -4322,7 +4322,7 @@ fn other_alu32_v2() {
             "
     mov32 w1, 50
     mov32 w2, 24
-    mov32 w2, 80
+    mov32 w3, 80
     mov32 w4, 90
 	add64 r11, -68
 	stxw [r10 - 4], w1
@@ -4425,10 +4425,10 @@ fn other_alu64_v2() {
     for _ in 0..1000 {
         test_interpreter_and_jit_asm!(
             "
-    mov64 w1, 50
-    mov64 w2, 24
-    mov64 w2, 80
-    mov64 w4, 90
+    mov64 r1, 50
+    mov64 r2, 24
+    mov64 r3, 80
+    mov64 r4, 90
 	add64 r11, -68
 	stxw [r10 - 4], r1
 	stxw [r10 - 8], r2
