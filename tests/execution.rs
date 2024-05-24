@@ -4173,7 +4173,7 @@ fn other_alu32_v1() {
             mov32 w2, 1
             jgt r4, r3, LBB0_2
             mov32 w2, 0
-        LBB0_2:                                 # %entry
+        LBB0_2:
             stxw [r10 - 44], w2
             ldxw w2, [r10 - 4]
             ldxw w3, [r10 - 8]
@@ -4182,7 +4182,7 @@ fn other_alu32_v1() {
             mov32 w2, 1
             jgt r3, r4, LBB0_4
             mov32 w2, 0
-        LBB0_4:                                 # %entry
+        LBB0_4:
             stxw [r10 - 48], w2
             ldxw w2, [r10 - 4]
             ldxw w3, [r10 - 8]
@@ -4198,7 +4198,7 @@ fn other_alu32_v1() {
             arsh64 r2, 32
             jsgt r2, 3, LBB0_6
             mov32 w1, 0
-        LBB0_6:                                 # %entry
+        LBB0_6:                                 
             stxw [r10 - 60], w1
             mov32 w0, 0
             exit
