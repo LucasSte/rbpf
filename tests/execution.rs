@@ -4300,7 +4300,7 @@ LBB0_6:
             config,
             [],
             (),
-            TestContextObject::new(29),
+            TestContextObject::new(60),
             ProgramResult::Ok(0),
         );
     }
@@ -4397,7 +4397,7 @@ LBB0_6:
             config,
             [],
             (),
-            TestContextObject::new(29),
+            TestContextObject::new(67),
             ProgramResult::Ok(0),
         );
     }
@@ -4409,7 +4409,7 @@ LBB0_6:
 #[test]
 fn other_alu64_v2() {
     let config = Config {
-        enable_sbpf_v2: false,
+        enable_sbpf_v2: true,
         .. Config::default()
     };
 
@@ -4480,7 +4480,7 @@ LBB0_4:
 	arsh64 r2, 32
 	jsgt r2, 3, LBB0_6
 	mov64 r1, 0
-LBB0_6:                                 
+LBB0_6:
 	stxw [r10 - 60], r1
 	mov64 r0, 0
 	add64 r11, 60
