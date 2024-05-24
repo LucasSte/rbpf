@@ -4403,7 +4403,7 @@ LBB0_6:
             config,
             [],
             (),
-            TestContextObject::new(67),
+            TestContextObject::new(74),
             ProgramResult::Ok(0),
         );
     }
@@ -4503,7 +4503,7 @@ LBB0_6:
             config,
             [],
             (),
-            TestContextObject::new(62),
+            TestContextObject::new(69),
             ProgramResult::Ok(0),
         );
     }
