@@ -4137,6 +4137,10 @@ fn other_alu32_v1() {
     for _ in 0..1000 {
         test_interpreter_and_jit_asm!(
             "
+            mov32 w1, 50
+            mov32 w2, 24
+            mov32 w2, 80
+            mov32 w4, 90
             stxw [r10 - 4], w1
             stxw [r10 - 8], w2
             stxw [r10 - 12], w3
@@ -4198,7 +4202,7 @@ fn other_alu32_v1() {
             arsh64 r2, 32
             jsgt r2, 3, LBB0_6
             mov32 w1, 0
-        LBB0_6:                                 
+        LBB0_6:
             stxw [r10 - 60], w1
             mov32 w0, 0
             exit
@@ -4228,70 +4232,69 @@ fn other_alu64_v1() {
     for _ in 0..1000 {
         test_interpreter_and_jit_asm!(
             "
-            	stxw [r10 - 4], w1
-	stxw [r10 - 8], w2
-	stxw [r10 - 12], w3
-	stxw [r10 - 16], w4
-	ldxw w1, [r10 - 4]
-	ldxw w2, [r10 - 8]
-	add32 w1, w2
-	stxw [r10 - 20], w1
-	ldxw w1, [r10 - 4]
-	ldxw w2, [r10 - 8]
-	sub32 w1, w2
-	stxw [r10 - 24], w1
-	ldxw w1, [r10 - 20]
-	ldxw w2, [r10 - 24]
-	mul32 w1, w2
-	stxw [r10 - 28], w1
-	ldxw w1, [r10 - 4]
-	ldxw w2, [r10 - 8]
-	div32 w1, w2
-	stxw [r10 - 32], w1
-	ldxw w1, [r10 - 4]
-	ldxw w2, [r10 - 8]
-	or32 w1, w2
-	stxw [r10 - 36], w1
-	ldxw w1, [r10 - 4]
-	ldxw w2, [r10 - 8]
-	and32 w1, w2
-	stxw [r10 - 40], w1
-	ldxw w2, [r10 - 4]
-	ldxw w3, [r10 - 8]
-	mov32 w1, 1
-	mov32 r4, w2
-	mov32 r3, w3
-	mov32 w2, 1
-	jgt r4, r3, LBB0_2
-	mov32 w2, 0
+    mov64 r1, 50
+    mov64 r2, 24
+    mov64 r2, 80
+    mov64 r4, 90
+   	stxw [r10 - 4], r1
+	stxw [r10 - 8], r2
+	stxw [r10 - 12], r3
+	stxw [r10 - 16], r4
+	ldxw r1, [r10 - 4]
+	ldxw r2, [r10 - 8]
+	add64 r1, r2
+	stxw [r10 - 20], r1
+	ldxw r1, [r10 - 4]
+	ldxw r2, [r10 - 8]
+	sub64 r1, r2
+	stxw [r10 - 24], r1
+	ldxw r1, [r10 - 20]
+	ldxw r2, [r10 - 24]
+	mul64 r1, r2
+	stxw [r10 - 28], r1
+	ldxw r1, [r10 - 4]
+	ldxw r2, [r10 - 8]
+	div64 r1, r2
+	stxw [r10 - 32], r1
+	ldxw r1, [r10 - 4]
+	ldxw r2, [r10 - 8]
+	or64 r1, r2
+	stxw [r10 - 36], r1
+	ldxw r1, [r10 - 4]
+	ldxw r2, [r10 - 8]
+	and64 r1, r2
+	stxw [r10 - 40], r1
+	ldxw r3, [r10 - 4]
+	ldxw r4, [r10 - 8]
+	mov64 r1, 1
+	mov64 r2, 1
+	jgt r3, r4, LBB0_2
+	mov64 r2, 0
 LBB0_2:                                 # %entry
-	stxw [r10 - 44], w2
-	ldxw w2, [r10 - 4]
-	ldxw w3, [r10 - 8]
-	mov32 r3, w3
-	mov32 r4, w2
-	mov32 w2, 1
-	jgt r3, r4, LBB0_4
-	mov32 w2, 0
+	stxw [r10 - 44], r2
+	ldxw r3, [r10 - 4]
+	ldxw r4, [r10 - 8]
+	mov64 r2, 1
+	jgt r4, r3, LBB0_4
+	mov64 r2, 0
 LBB0_4:                                 # %entry
-	stxw [r10 - 48], w2
-	ldxw w2, [r10 - 4]
-	ldxw w3, [r10 - 8]
-	mod32 w2, w3
-	stxw [r10 - 52], w2
-	ldxw w2, [r10 - 4]
-	ldxw w3, [r10 - 8]
-	xor32 w2, w3
-	stxw [r10 - 56], w2
-	ldxw w2, [r10 - 12]
-	mov32 r2, w2
+	stxw [r10 - 48], r2
+	ldxw r2, [r10 - 4]
+	ldxw r3, [r10 - 8]
+	mod64 r2, r3
+	stxw [r10 - 52], r2
+	ldxw r2, [r10 - 4]
+	ldxw r3, [r10 - 8]
+	xor64 r2, r3
+	stxw [r10 - 56], r2
+	ldxw r2, [r10 - 12]
 	lsh64 r2, 32
 	arsh64 r2, 32
 	jsgt r2, 3, LBB0_6
-	mov32 w1, 0
+	mov64 r1, 0
 LBB0_6:                                 # %entry
-	stxw [r10 - 60], w1
-	mov32 w0, 0
+	stxw [r10 - 60], r1
+	mov64 r0, 0
 	exit
             ",
             config,
@@ -4319,6 +4322,10 @@ fn other_alu32_v2() {
     for _ in 0..1000 {
         test_interpreter_and_jit_asm!(
             "
+    mov32 w1, 50
+    mov32 w2, 24
+    mov32 w2, 80
+    mov32 w4, 90
 	add64 r11, -60
 	stxw [r10 - 4], w1
 	stxw [r10 - 8], w2
@@ -4412,6 +4419,10 @@ fn other_alu64_v2() {
     for _ in 0..1000 {
         test_interpreter_and_jit_asm!(
             "
+    mov64 w1, 50
+    mov64 w2, 24
+    mov64 w2, 80
+    mov64 w4, 90
 	add64 r11, -60
 	stxw [r10 - 4], r1
 	stxw [r10 - 8], r2
