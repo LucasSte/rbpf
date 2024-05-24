@@ -4489,7 +4489,7 @@ LBB0_6:
             config,
             [],
             (),
-            TestContextObject::new(29),
+            TestContextObject::new(62),
             ProgramResult::Ok(0),
         );
     }
