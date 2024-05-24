@@ -4209,7 +4209,7 @@ LBB0_6:
             config,
             [],
             (),
-            TestContextObject::new(65),
+            TestContextObject::new(64),
             ProgramResult::Ok(0),
         );
     }
@@ -4298,7 +4298,7 @@ LBB0_6:
             config,
             [],
             (),
-            TestContextObject::new(60),
+            TestContextObject::new(59),
             ProgramResult::Ok(0),
         );
     }
@@ -4389,12 +4389,12 @@ LBB0_4:
 LBB0_6:
 	stxw [r10 - 60], w1
 	ldxw w1, [r10 - 16]
-	ldxw w2, [r10 - 60]
-	sdiv32 w1, w2
+	ldxw w2, [r10 - 12]
+	udiv32 w1, w2
 	stxw [r10 - 64], w1
 	ldxw w1, [r10 - 16]
-	ldxw w2, [r10 - 60]
-	srem32 w1, w2
+	ldxw w2, [r10 - 12]
+	urem32 w1, w2
 	stxw [r10 - 68], w1
 	mov32 w0, 0
 	add64 r11, 68
@@ -4489,20 +4489,12 @@ LBB0_4:
 LBB0_6:
 	stxw [r10 - 60], r1
 	ldxw r1, [r10 - 16]
-	lsh64 r1, 32
-	arsh64 r1, 32
-	ldxw r2, [r10 - 60]
-	lsh64 r2, 32
-	arsh64 r2, 32
-	sdiv64 r1, r2
+	ldxw r2, [r10 - 12]
+	udiv64 r1, r2
 	stxw [r10 - 64], r1
 	ldxw r1, [r10 - 16]
-	lsh64 r1, 32
-	arsh64 r1, 32
-	ldxw r2, [r10 - 60]
-	lsh64 r2, 32
-	arsh64 r2, 32
-	srem64 r1, r2
+	ldxw r2, [r10 - 12]
+	urem64 r1, r2
 	stxw [r10 - 68], r1
 	mov64 r0, 0
 	add64 r11, 68
