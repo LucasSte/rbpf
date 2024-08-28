@@ -850,6 +850,7 @@ impl<C: ContextObject> Executable<C> {
 
             match BpfRelocationType::from_x86_relocation_type(relocation.r_type()) {
                 Some(BpfRelocationType::R_Bpf_64_64) => {
+                    std::println!("Relocation 1");
                     // Offset of the immediate field
                     let imm_offset = if text_section
                         .file_range()
@@ -923,6 +924,7 @@ impl<C: ContextObject> Executable<C> {
                     }
                 }
                 Some(BpfRelocationType::R_Bpf_64_Relative) => {
+                    std::println!("Relocation 2");
                     // Relocation between different sections, where the target
                     // memory is not associated to a symbol (eg some compiler
                     // generated rodata that doesn't have an explicit symbol).
@@ -1029,6 +1031,7 @@ impl<C: ContextObject> Executable<C> {
                     }
                 }
                 Some(BpfRelocationType::R_Bpf_64_32) => {
+                    std::println!("Relocation 3");
                     // The .text section has an unresolved call to symbol instruction
                     // Hash the symbol name and stick it into the call instruction's imm
                     // field.  Later that hash will be used to look up the function location.
