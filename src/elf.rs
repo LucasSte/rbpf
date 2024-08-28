@@ -972,7 +972,6 @@ impl<C: ContextObject> Executable<C> {
                     }
                 }
                 Some(BpfRelocationType::R_Bpf_64_Relative) => {
-                    std::println!("Relocation 2");
                     // Relocation between different sections, where the target
                     // memory is not associated to a symbol (eg some compiler
                     // generated rodata that doesn't have an explicit symbol).
@@ -985,6 +984,7 @@ impl<C: ContextObject> Executable<C> {
                         .unwrap_or_default()
                         .contains(&r_offset)
                     {
+                        std::println!("Relocation 2.1");
                         // We're relocating a lddw instruction, which spans two
                         // instruction slots. The address to be relocated is
                         // split in two halves in the two imms of the
@@ -1046,6 +1046,7 @@ impl<C: ContextObject> Executable<C> {
                             refd_addr.checked_shr(32).unwrap_or_default() as u32,
                         );
                     } else {
+                        std::println!("Relocation 2.2");
                         let refd_addr = if sbpf_version != SBPFVersion::V1 {
                             // We're relocating an address inside a data section (eg .rodata). The
                             // address is encoded as a simple u64.
@@ -1079,7 +1080,6 @@ impl<C: ContextObject> Executable<C> {
                     }
                 }
                 Some(BpfRelocationType::R_Bpf_64_32) => {
-                    std::println!("Relocation 3");
                     // The .text section has an unresolved call to symbol instruction
                     // Hash the symbol name and stick it into the call instruction's imm
                     // field.  Later that hash will be used to look up the function location.
@@ -1098,6 +1098,7 @@ impl<C: ContextObject> Executable<C> {
 
                     // If the symbol is defined, this is a bpf-to-bpf call
                     let key = if symbol.is_function() && symbol.st_value != 0 {
+                        std::println!("Relocation 3.1");
                         if !text_section.vm_range().contains(&symbol.st_value) {
                             return Err(ElfError::ValueOutOfBounds);
                         }
@@ -1112,6 +1113,7 @@ impl<C: ContextObject> Executable<C> {
                             target_pc,
                         )?
                     } else {
+                        std::println!("Relocation 3.2");
                         // Else it's a syscall
                         let hash = *syscall_cache
                             .entry(symbol.st_name)
