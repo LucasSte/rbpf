@@ -450,11 +450,11 @@ impl<'a, 'b, C: ContextObject> Interpreter<'a, 'b, C> {
                     return false;
                 }
                 check_pc!(self, next_pc, target_pc.wrapping_sub(self.program_vm_addr) / ebpf::INSN_SIZE as u64);
-                if self.executable.get_sbpf_version().static_syscalls() && self.executable.get_function_registry().lookup_by_key(next_pc as u32).is_none() {
-                    self.vm.due_insn_count += 1;
-                    self.reg[11] = next_pc;
-                    throw_error!(self, EbpfError::UnsupportedInstruction);
-                }
+                // if self.executable.get_sbpf_version().static_syscalls() && self.executable.get_function_registry().lookup_by_key(next_pc as u32).is_none() {
+                //     self.vm.due_insn_count += 1;
+                //     self.reg[11] = next_pc;
+                //     throw_error!(self, EbpfError::UnsupportedInstruction);
+                // }
             },
 
             // Do not delegate the check to the verifier, since self.registered functions can be
@@ -495,6 +495,7 @@ impl<'a, 'b, C: ContextObject> Interpreter<'a, 'b, C> {
                 }
 
                 if !resolved {
+                    std::println!("Invalid call!");
                     throw_error!(self, EbpfError::UnsupportedInstruction);
                 }
             }
@@ -521,7 +522,10 @@ impl<'a, 'b, C: ContextObject> Interpreter<'a, 'b, C> {
                 }
                 check_pc!(self, next_pc, frame.target_pc);
             }
-            _ => throw_error!(self, EbpfError::UnsupportedInstruction),
+            _ => {
+                std::println!("Invalid instruction!");
+                throw_error!(self, EbpfError::UnsupportedInstruction)
+            },
         }
 
         if config.enable_instruction_meter && self.vm.due_insn_count >= self.vm.previous_instruction_meter {

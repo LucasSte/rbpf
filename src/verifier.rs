@@ -171,7 +171,10 @@ fn check_call_target(
     function_registry
         .lookup_by_key(key)
         .map(|_| ())
-        .ok_or(VerifierError::InvalidFunction(key as usize))
+        .ok_or({
+            //std::println!("Function not found key: {}", key);
+            VerifierError::InvalidFunction(key as usize)
+        })
 }
 
 fn check_registers(
@@ -231,24 +234,28 @@ impl Verifier for RequisiteVerifier {
         check_prog_len(prog)?;
 
         let program_range = 0..prog.len() / ebpf::INSN_SIZE;
-        let mut function_iter = function_registry.keys().map(|insn_ptr| insn_ptr as usize).peekable();
-        let mut function_range = program_range.start..program_range.end;
+//        let mut function_iter = function_registry.keys().map(|insn_ptr| insn_ptr as usize).peekable();
+        let function_range = program_range.start..program_range.end;
         let mut insn_ptr: usize = 0;
         while (insn_ptr + 1) * ebpf::INSN_SIZE <= prog.len() {
             let insn = ebpf::get_insn(prog, insn_ptr);
             let mut store = false;
 
-            if sbpf_version.static_syscalls() && function_iter.peek() == Some(&insn_ptr) {
-                function_range.start = function_iter.next().unwrap_or(0);
-                function_range.end = *function_iter.peek().unwrap_or(&program_range.end);
-                let insn = ebpf::get_insn(prog, function_range.end.saturating_sub(1));
-                match insn.opc {
-                    ebpf::JA | ebpf::EXIT => {},
-                    _ => return Err(VerifierError::InvalidFunction(
-                        function_range.end.saturating_sub(1),
-                    )),
-                }
-            }
+            // This check is failing!
+            // if sbpf_version.static_syscalls() && function_iter.peek() == Some(&insn_ptr) {
+            //     function_range.start = function_iter.next().unwrap_or(0);
+            //     function_range.end = *function_iter.peek().unwrap_or(&program_range.end);
+            //     let insn = ebpf::get_insn(prog, function_range.end.saturating_sub(1));
+            //     match insn.opc {
+            //         ebpf::JA | ebpf::EXIT => {},
+            //         _ => {
+            //             std::println!("err insin: {:?}", insn);
+            //             return Err(VerifierError::InvalidFunction(
+            //             function_range.end.saturating_sub(1),
+            //         ))
+            //         },
+            //     }
+            // }
 
             match insn.opc {
                 ebpf::LD_DW_IMM if sbpf_version.enable_lddw() => {

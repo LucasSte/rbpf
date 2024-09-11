@@ -37,7 +37,8 @@ impl SBPFVersion {
 
     /// Enable the only two slots long instruction: LD_DW_IMM
     pub fn enable_lddw(&self) -> bool {
-        self == &SBPFVersion::V1
+        // self == &SBPFVersion::V1
+        false
     }
 
     /// Enable the BPF_PQR instruction class
@@ -59,7 +60,8 @@ impl SBPFVersion {
     /// Allow sh_addr != sh_offset in elf sections. Used in V2 to align
     /// section vaddrs to MM_PROGRAM_START.
     pub fn enable_elf_vaddr(&self) -> bool {
-        self != &SBPFVersion::V1
+        // self != &SBPFVersion::V1
+        true
     }
 
     /// Use dynamic stack frame sizes
@@ -69,7 +71,8 @@ impl SBPFVersion {
 
     /// Support syscalls via pseudo calls (insn.src = 0)
     pub fn static_syscalls(&self) -> bool {
-        self != &SBPFVersion::V1
+        // self != &SBPFVersion::V1
+        true
     }
 }
 
