@@ -205,6 +205,7 @@ impl<'a, 'b, C: ContextObject> Interpreter<'a, 'b, C> {
             },
             ebpf::LD_DW_REG  => {
                 let vm_addr = (self.reg[src] as i64).wrapping_add(insn.off as i64) as u64;
+                std::println!("loading {:x}", vm_addr);
                 self.reg[dst] = translate_memory_access!(self, load, vm_addr, u64);
             },
 

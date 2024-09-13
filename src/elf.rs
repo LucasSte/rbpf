@@ -34,6 +34,8 @@ use std::sync::Arc;
 
 #[cfg(feature = "shuttle-test")]
 use shuttle::sync::Arc;
+use crate::ebpf::INSN_SIZE;
+use crate::elf_parser::types::Elf64Phdr;
 
 /// Error definitions
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -823,7 +825,7 @@ impl<C: ContextObject> Executable<C> {
         elf: &Elf64,
         elf_bytes: &mut [u8],
     ) -> Result<(), ElfError> {
-        //let mut syscall_cache = BTreeMap::new();
+        let mut syscall_cache = BTreeMap::new();
         let text_section = get_section(elf, b".text")?;
         let sbpf_version = if elf.file_header().e_flags == EF_SBPF_V2 {
             SBPFVersion::V2
@@ -871,268 +873,275 @@ impl<C: ContextObject> Executable<C> {
             }
         }
 
-        //let mut program_header: Option<&Elf64Phdr> = None;
+        let mut program_header: Option<&Elf64Phdr> = None;
 
         // Fixup all the relocations in the relocation section if exists
-        // for relocation in elf.dynamic_relocations_table().unwrap_or_default().iter() {
-        //     let mut r_offset = relocation.r_offset as usize;
-        //
-        //     // When sbpf_version.enable_elf_vaddr()=true, we allow section.sh_addr !=
-        //     // section.sh_offset so we need to bring r_offset to the correct
-        //     // byte offset.
-        //     if sbpf_version.enable_elf_vaddr() {
-        //         match program_header {
-        //             Some(header) if header.vm_range().contains(&(r_offset as u64)) => {}
-        //             _ => {
-        //                 program_header = elf
-        //                     .program_header_table()
-        //                     .iter()
-        //                     .find(|header| header.vm_range().contains(&(r_offset as u64)))
-        //             }
-        //         }
-        //         let header = program_header.as_ref().ok_or(ElfError::ValueOutOfBounds)?;
-        //         r_offset = r_offset
-        //             .saturating_sub(header.p_vaddr as usize)
-        //             .saturating_add(header.p_offset as usize);
-        //     }
-        //
-        //     match BpfRelocationType::from_x86_relocation_type(relocation.r_type()) {
-        //         Some(BpfRelocationType::R_Bpf_64_64) => {
-        //             // Offset of the immediate field
-        //             let imm_offset = if text_section
-        //                 .file_range()
-        //                 .unwrap_or_default()
-        //                 .contains(&r_offset)
-        //                 || sbpf_version == SBPFVersion::V1
-        //             {
-        //                 r_offset.saturating_add(BYTE_OFFSET_IMMEDIATE)
-        //             } else {
-        //                 r_offset
-        //             };
-        //
-        //             // Read the instruction's immediate field which contains virtual
-        //             // address to convert to physical
-        //             let checked_slice = elf_bytes
-        //                 .get(imm_offset..imm_offset.saturating_add(BYTE_LENGTH_IMMEDIATE))
-        //                 .ok_or(ElfError::ValueOutOfBounds)?;
-        //             let refd_addr = LittleEndian::read_u32(checked_slice) as u64;
-        //
-        //             let symbol = elf
-        //                 .dynamic_symbol_table()
-        //                 .and_then(|table| table.get(relocation.r_sym() as usize).cloned())
-        //                 .ok_or_else(|| ElfError::UnknownSymbol(relocation.r_sym() as usize))?;
-        //
-        //             // The relocated address is relative to the address of the
-        //             // symbol at index `r_sym`
-        //             let mut addr = symbol.st_value.saturating_add(refd_addr);
-        //
-        //             // The "physical address" from the VM's perspective is rooted
-        //             // at `MM_PROGRAM_START`. If the linker hasn't already put
-        //             // the symbol within `MM_PROGRAM_START`, we need to do so
-        //             // now.
-        //             if addr < ebpf::MM_PROGRAM_START {
-        //                 addr = ebpf::MM_PROGRAM_START.saturating_add(addr);
-        //             }
-        //
-        //             if text_section
-        //                 .file_range()
-        //                 .unwrap_or_default()
-        //                 .contains(&r_offset)
-        //                 || sbpf_version == SBPFVersion::V1
-        //             {
-        //                 let imm_low_offset = imm_offset;
-        //                 let imm_high_offset = imm_low_offset.saturating_add(INSN_SIZE);
-        //
-        //                 // Write the low side of the relocate address
-        //                 let imm_slice = elf_bytes
-        //                     .get_mut(
-        //                         imm_low_offset
-        //                             ..imm_low_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
-        //                     )
-        //                     .ok_or(ElfError::ValueOutOfBounds)?;
-        //                 LittleEndian::write_u32(imm_slice, (addr & 0xFFFFFFFF) as u32);
-        //
-        //                 // Write the high side of the relocate address
-        //                 let imm_slice = elf_bytes
-        //                     .get_mut(
-        //                         imm_high_offset
-        //                             ..imm_high_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
-        //                     )
-        //                     .ok_or(ElfError::ValueOutOfBounds)?;
-        //                 LittleEndian::write_u32(
-        //                     imm_slice,
-        //                     addr.checked_shr(32).unwrap_or_default() as u32,
-        //                 );
-        //             } else {
-        //                 let imm_slice = elf_bytes
-        //                     .get_mut(imm_offset..imm_offset.saturating_add(8))
-        //                     .ok_or(ElfError::ValueOutOfBounds)?;
-        //                 LittleEndian::write_u64(imm_slice, addr);
-        //             }
-        //         }
-        //         Some(BpfRelocationType::R_Bpf_64_Relative) => {
-        //             // Relocation between different sections, where the target
-        //             // memory is not associated to a symbol (eg some compiler
-        //             // generated rodata that doesn't have an explicit symbol).
-        //
-        //             // Offset of the immediate field
-        //             let imm_offset = r_offset.saturating_add(BYTE_OFFSET_IMMEDIATE);
-        //
-        //             if text_section
-        //                 .file_range()
-        //                 .unwrap_or_default()
-        //                 .contains(&r_offset)
-        //             {
-        //                 // We're relocating a lddw instruction, which spans two
-        //                 // instruction slots. The address to be relocated is
-        //                 // split in two halves in the two imms of the
-        //                 // instruction slots.
-        //                 let imm_low_offset = imm_offset;
-        //                 let imm_high_offset = r_offset
-        //                     .saturating_add(INSN_SIZE)
-        //                     .saturating_add(BYTE_OFFSET_IMMEDIATE);
-        //
-        //                 // Read the low side of the address
-        //                 let imm_slice = elf_bytes
-        //                     .get(
-        //                         imm_low_offset
-        //                             ..imm_low_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
-        //                     )
-        //                     .ok_or(ElfError::ValueOutOfBounds)?;
-        //                 let va_low = LittleEndian::read_u32(imm_slice) as u64;
-        //
-        //                 // Read the high side of the address
-        //                 let imm_slice = elf_bytes
-        //                     .get(
-        //                         imm_high_offset
-        //                             ..imm_high_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
-        //                     )
-        //                     .ok_or(ElfError::ValueOutOfBounds)?;
-        //                 let va_high = LittleEndian::read_u32(imm_slice) as u64;
-        //
-        //                 // Put the address back together
-        //                 let mut refd_addr = va_high.checked_shl(32).unwrap_or_default() | va_low;
-        //
-        //                 if refd_addr == 0 {
-        //                     return Err(ElfError::InvalidVirtualAddress(refd_addr));
-        //                 }
-        //
-        //                 if refd_addr < ebpf::MM_PROGRAM_START {
-        //                     // The linker hasn't already placed rodata within
-        //                     // MM_PROGRAM_START, so we do so now
-        //                     refd_addr = ebpf::MM_PROGRAM_START.saturating_add(refd_addr);
-        //                 }
-        //
-        //                 // Write back the low half
-        //                 let imm_slice = elf_bytes
-        //                     .get_mut(
-        //                         imm_low_offset
-        //                             ..imm_low_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
-        //                     )
-        //                     .ok_or(ElfError::ValueOutOfBounds)?;
-        //                 LittleEndian::write_u32(imm_slice, (refd_addr & 0xFFFFFFFF) as u32);
-        //
-        //                 // Write back the high half
-        //                 let imm_slice = elf_bytes
-        //                     .get_mut(
-        //                         imm_high_offset
-        //                             ..imm_high_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
-        //                     )
-        //                     .ok_or(ElfError::ValueOutOfBounds)?;
-        //                 LittleEndian::write_u32(
-        //                     imm_slice,
-        //                     refd_addr.checked_shr(32).unwrap_or_default() as u32,
-        //                 );
-        //             } else {
-        //                 let refd_addr = if sbpf_version != SBPFVersion::V1 {
-        //                     // We're relocating an address inside a data section (eg .rodata). The
-        //                     // address is encoded as a simple u64.
-        //
-        //                     let addr_slice = elf_bytes
-        //                         .get(r_offset..r_offset.saturating_add(mem::size_of::<u64>()))
-        //                         .ok_or(ElfError::ValueOutOfBounds)?;
-        //                     let mut refd_addr = LittleEndian::read_u64(addr_slice);
-        //                     if refd_addr < ebpf::MM_PROGRAM_START {
-        //                         // Not within MM_PROGRAM_START, do it now
-        //                         refd_addr = ebpf::MM_PROGRAM_START.saturating_add(refd_addr);
-        //                     }
-        //                     refd_addr
-        //                 } else {
-        //                     // There used to be a bug in toolchains before
-        //                     // https://github.com/solana-labs/llvm-project/pull/35 where for 64 bit
-        //                     // relocations we were encoding only the low 32 bits, shifted 32 bits to
-        //                     // the left. Our relocation code used to be compatible with that, so we
-        //                     // need to keep supporting this case for backwards compatibility.
-        //                     let addr_slice = elf_bytes
-        //                         .get(imm_offset..imm_offset.saturating_add(BYTE_LENGTH_IMMEDIATE))
-        //                         .ok_or(ElfError::ValueOutOfBounds)?;
-        //                     let refd_addr = LittleEndian::read_u32(addr_slice) as u64;
-        //                     ebpf::MM_PROGRAM_START.saturating_add(refd_addr)
-        //                 };
-        //
-        //                 let addr_slice = elf_bytes
-        //                     .get_mut(r_offset..r_offset.saturating_add(mem::size_of::<u64>()))
-        //                     .ok_or(ElfError::ValueOutOfBounds)?;
-        //                 LittleEndian::write_u64(addr_slice, refd_addr);
-        //             }
-        //         }
-        //         Some(BpfRelocationType::R_Bpf_64_32) => {
-        //             // The .text section has an unresolved call to symbol instruction
-        //             // Hash the symbol name and stick it into the call instruction's imm
-        //             // field.  Later that hash will be used to look up the function location.
-        //
-        //             // Offset of the immediate field
-        //             let imm_offset = r_offset.saturating_add(BYTE_OFFSET_IMMEDIATE);
-        //
-        //             let symbol = elf
-        //                 .dynamic_symbol_table()
-        //                 .and_then(|table| table.get(relocation.r_sym() as usize).cloned())
-        //                 .ok_or_else(|| ElfError::UnknownSymbol(relocation.r_sym() as usize))?;
-        //
-        //             let name = elf
-        //                 .dynamic_symbol_name(symbol.st_name as Elf64Word)
-        //                 .map_err(|_| ElfError::UnknownSymbol(symbol.st_name as usize))?;
-        //
-        //             // If the symbol is defined, this is a bpf-to-bpf call
-        //             let key = if symbol.is_function() && symbol.st_value != 0 {
-        //                 if !text_section.vm_range().contains(&symbol.st_value) {
-        //                     return Err(ElfError::ValueOutOfBounds);
-        //                 }
-        //                 let target_pc = (symbol.st_value.saturating_sub(text_section.sh_addr)
-        //                     as usize)
-        //                     .checked_div(ebpf::INSN_SIZE)
-        //                     .unwrap_or_default();
-        //                 function_registry.register_function_hashed_legacy(
-        //                     loader,
-        //                     !sbpf_version.static_syscalls(),
-        //                     name,
-        //                     target_pc,
-        //                 )?
-        //             } else {
-        //                 // Else it's a syscall
-        //                 let hash = *syscall_cache
-        //                     .entry(symbol.st_name)
-        //                     .or_insert_with(|| ebpf::hash_symbol_name(name));
-        //                 if config.reject_broken_elfs
-        //                     && loader.get_function_registry().lookup_by_key(hash).is_none()
-        //                 {
-        //                     return Err(ElfError::UnresolvedSymbol(
-        //                         String::from_utf8_lossy(name).to_string(),
-        //                         r_offset.checked_div(ebpf::INSN_SIZE).unwrap_or(0),
-        //                         r_offset,
-        //                     ));
-        //                 }
-        //                 hash
-        //             };
-        //
-        //             let checked_slice = elf_bytes
-        //                 .get_mut(imm_offset..imm_offset.saturating_add(BYTE_LENGTH_IMMEDIATE))
-        //                 .ok_or(ElfError::ValueOutOfBounds)?;
-        //             LittleEndian::write_u32(checked_slice, key);
-        //         }
-        //         _ => return Err(ElfError::UnknownRelocation(relocation.r_type())),
-        //     }
-        //}
+        for relocation in elf.dynamic_relocations_table().unwrap_or_default().iter() {
+            let mut r_offset = relocation.r_offset as usize;
+
+            // When sbpf_version.enable_elf_vaddr()=true, we allow section.sh_addr !=
+            // section.sh_offset so we need to bring r_offset to the correct
+            // byte offset.
+            if sbpf_version.enable_elf_vaddr() {
+                match program_header {
+                    Some(header) if header.vm_range().contains(&(r_offset as u64)) => {}
+                    _ => {
+                        program_header = elf
+                            .program_header_table()
+                            .iter()
+                            .find(|header| header.vm_range().contains(&(r_offset as u64)))
+                    }
+                }
+                let header = program_header.as_ref().ok_or(ElfError::ValueOutOfBounds)?;
+                r_offset = r_offset
+                    .saturating_sub(header.p_vaddr as usize)
+                    .saturating_add(header.p_offset as usize);
+            }
+
+            match BpfRelocationType::from_x86_relocation_type(relocation.r_type()) {
+                Some(BpfRelocationType::R_Bpf_64_64) => {
+                    // Offset of the immediate field
+                    let imm_offset = if text_section
+                        .file_range()
+                        .unwrap_or_default()
+                        .contains(&r_offset)
+                        || sbpf_version == SBPFVersion::V1
+                    {
+                        r_offset.saturating_add(BYTE_OFFSET_IMMEDIATE)
+                    } else {
+                        r_offset
+                    };
+
+                    // Read the instruction's immediate field which contains virtual
+                    // address to convert to physical
+                    let checked_slice = elf_bytes
+                        .get(imm_offset..imm_offset.saturating_add(BYTE_LENGTH_IMMEDIATE))
+                        .ok_or(ElfError::ValueOutOfBounds)?;
+                    let refd_addr = LittleEndian::read_u32(checked_slice) as u64;
+
+                    let symbol = elf
+                        .dynamic_symbol_table()
+                        .and_then(|table| table.get(relocation.r_sym() as usize).cloned())
+                        .ok_or_else(|| ElfError::UnknownSymbol(relocation.r_sym() as usize))?;
+
+                    // The relocated address is relative to the address of the
+                    // symbol at index `r_sym`
+                    let mut addr = symbol.st_value.saturating_add(refd_addr);
+
+                    // The "physical address" from the VM's perspective is rooted
+                    // at `MM_PROGRAM_START`. If the linker hasn't already put
+                    // the symbol within `MM_PROGRAM_START`, we need to do so
+                    // now.
+                    std::println!("Read from symbol: {:x}", addr);
+                    if addr < ebpf::MM_PROGRAM_START {
+                        addr = ebpf::MM_PROGRAM_START.saturating_add(addr);
+                    }
+
+                    if text_section
+                        .file_range()
+                        .unwrap_or_default()
+                        .contains(&r_offset)
+                        || sbpf_version == SBPFVersion::V1
+                    {
+                        std::println!("In text");
+                        let imm_low_offset = imm_offset;
+                        let imm_high_offset = imm_low_offset.saturating_add(INSN_SIZE);
+
+                        // Write the low side of the relocate address
+                        let imm_slice = elf_bytes
+                            .get_mut(
+                                imm_low_offset
+                                    ..imm_low_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
+                            )
+                            .ok_or(ElfError::ValueOutOfBounds)?;
+                        LittleEndian::write_u32(imm_slice, (addr & 0xFFFFFFFF) as u32);
+
+                        // Write the high side of the relocate address
+                        let imm_slice = elf_bytes
+                            .get_mut(
+                                imm_high_offset
+                                    ..imm_high_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
+                            )
+                            .ok_or(ElfError::ValueOutOfBounds)?;
+                        LittleEndian::write_u32(
+                            imm_slice,
+                            addr.checked_shr(32).unwrap_or_default() as u32,
+                        );
+                    } else {
+                        std::println!("Not in text");
+                        let imm_slice = elf_bytes
+                            .get_mut(imm_offset..imm_offset.saturating_add(8))
+                            .ok_or(ElfError::ValueOutOfBounds)?;
+                        LittleEndian::write_u64(imm_slice, addr);
+                    }
+                }
+                Some(BpfRelocationType::R_Bpf_64_Relative) => {
+                    // Relocation between different sections, where the target
+                    // memory is not associated to a symbol (eg some compiler
+                    // generated rodata that doesn't have an explicit symbol).
+
+                    // Offset of the immediate field
+                    let imm_offset = r_offset.saturating_add(BYTE_OFFSET_IMMEDIATE);
+
+                    if text_section
+                        .file_range()
+                        .unwrap_or_default()
+                        .contains(&r_offset)
+                    {
+                        std::println!("In text");
+                        // We're relocating a lddw instruction, which spans two
+                        // instruction slots. The address to be relocated is
+                        // split in two halves in the two imms of the
+                        // instruction slots.
+                        let imm_low_offset = imm_offset;
+                        let imm_high_offset = r_offset
+                            .saturating_add(INSN_SIZE)
+                            .saturating_add(BYTE_OFFSET_IMMEDIATE);
+
+                        // Read the low side of the address
+                        let imm_slice = elf_bytes
+                            .get(
+                                imm_low_offset
+                                    ..imm_low_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
+                            )
+                            .ok_or(ElfError::ValueOutOfBounds)?;
+                        let va_low = LittleEndian::read_u32(imm_slice) as u64;
+
+                        // Read the high side of the address
+                        let imm_slice = elf_bytes
+                            .get(
+                                imm_high_offset
+                                    ..imm_high_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
+                            )
+                            .ok_or(ElfError::ValueOutOfBounds)?;
+                        let va_high = LittleEndian::read_u32(imm_slice) as u64;
+
+                        // Put the address back together
+                        let mut refd_addr = va_high.checked_shl(32).unwrap_or_default() | va_low;
+
+                        if refd_addr == 0 {
+                            return Err(ElfError::InvalidVirtualAddress(refd_addr));
+                        }
+
+                        if refd_addr < ebpf::MM_PROGRAM_START {
+                            // The linker hasn't already placed rodata within
+                            // MM_PROGRAM_START, so we do so now
+                            refd_addr = ebpf::MM_PROGRAM_START.saturating_add(refd_addr);
+                        }
+
+                        // Write back the low half
+                        let imm_slice = elf_bytes
+                            .get_mut(
+                                imm_low_offset
+                                    ..imm_low_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
+                            )
+                            .ok_or(ElfError::ValueOutOfBounds)?;
+                        LittleEndian::write_u32(imm_slice, (refd_addr & 0xFFFFFFFF) as u32);
+
+                        // Write back the high half
+                        let imm_slice = elf_bytes
+                            .get_mut(
+                                imm_high_offset
+                                    ..imm_high_offset.saturating_add(BYTE_LENGTH_IMMEDIATE),
+                            )
+                            .ok_or(ElfError::ValueOutOfBounds)?;
+                        LittleEndian::write_u32(
+                            imm_slice,
+                            refd_addr.checked_shr(32).unwrap_or_default() as u32,
+                        );
+                    } else {
+                        let refd_addr = if sbpf_version != SBPFVersion::V1 {
+                            // We're relocating an address inside a data section (eg .rodata). The
+                            // address is encoded as a simple u64.
+
+                            std::println!("Not bug");
+                            let addr_slice = elf_bytes
+                                .get(r_offset..r_offset.saturating_add(mem::size_of::<u64>()))
+                                .ok_or(ElfError::ValueOutOfBounds)?;
+                            let mut refd_addr = LittleEndian::read_u64(addr_slice);
+                            std::println!("Read addr: {:x}", refd_addr);
+                            if refd_addr < ebpf::MM_PROGRAM_START {
+                                // Not within MM_PROGRAM_START, do it now
+                                refd_addr = ebpf::MM_PROGRAM_START.saturating_add(refd_addr);
+                            }
+                            refd_addr
+                        } else {
+                            std::println!("Bug part");
+                            // There used to be a bug in toolchains before
+                            // https://github.com/solana-labs/llvm-project/pull/35 where for 64 bit
+                            // relocations we were encoding only the low 32 bits, shifted 32 bits to
+                            // the left. Our relocation code used to be compatible with that, so we
+                            // need to keep supporting this case for backwards compatibility.
+                            let addr_slice = elf_bytes
+                                .get(imm_offset..imm_offset.saturating_add(BYTE_LENGTH_IMMEDIATE))
+                                .ok_or(ElfError::ValueOutOfBounds)?;
+                            let refd_addr = LittleEndian::read_u32(addr_slice) as u64;
+                            ebpf::MM_PROGRAM_START.saturating_add(refd_addr)
+                        };
+
+                        let addr_slice = elf_bytes
+                            .get_mut(r_offset..r_offset.saturating_add(mem::size_of::<u64>()))
+                            .ok_or(ElfError::ValueOutOfBounds)?;
+                        LittleEndian::write_u64(addr_slice, refd_addr);
+                    }
+                }
+                Some(BpfRelocationType::R_Bpf_64_32) => {
+                    // The .text section has an unresolved call to symbol instruction
+                    // Hash the symbol name and stick it into the call instruction's imm
+                    // field.  Later that hash will be used to look up the function location.
+
+                    // Offset of the immediate field
+                    let imm_offset = r_offset.saturating_add(BYTE_OFFSET_IMMEDIATE);
+
+                    let symbol = elf
+                        .dynamic_symbol_table()
+                        .and_then(|table| table.get(relocation.r_sym() as usize).cloned())
+                        .ok_or_else(|| ElfError::UnknownSymbol(relocation.r_sym() as usize))?;
+
+                    let name = elf
+                        .dynamic_symbol_name(symbol.st_name as Elf64Word)
+                        .map_err(|_| ElfError::UnknownSymbol(symbol.st_name as usize))?;
+
+                    // If the symbol is defined, this is a bpf-to-bpf call
+                    let key = if symbol.is_function() && symbol.st_value != 0 {
+                        if !text_section.vm_range().contains(&symbol.st_value) {
+                            return Err(ElfError::ValueOutOfBounds);
+                        }
+                        let target_pc = (symbol.st_value.saturating_sub(text_section.sh_addr)
+                            as usize)
+                            .checked_div(ebpf::INSN_SIZE)
+                            .unwrap_or_default();
+                        function_registry.register_function_hashed_legacy(
+                            loader,
+                            !sbpf_version.static_syscalls(),
+                            name,
+                            target_pc,
+                        )?
+                    } else {
+                        // Else it's a syscall
+                        let hash = *syscall_cache
+                            .entry(symbol.st_name)
+                            .or_insert_with(|| ebpf::hash_symbol_name(name));
+                        if config.reject_broken_elfs
+                            && loader.get_function_registry().lookup_by_key(hash).is_none()
+                        {
+                            return Err(ElfError::UnresolvedSymbol(
+                                String::from_utf8_lossy(name).to_string(),
+                                r_offset.checked_div(ebpf::INSN_SIZE).unwrap_or(0),
+                                r_offset,
+                            ));
+                        }
+                        hash
+                    };
+
+                    let checked_slice = elf_bytes
+                        .get_mut(imm_offset..imm_offset.saturating_add(BYTE_LENGTH_IMMEDIATE))
+                        .ok_or(ElfError::ValueOutOfBounds)?;
+                    LittleEndian::write_u32(checked_slice, key);
+                }
+                _ => return Err(ElfError::UnknownRelocation(relocation.r_type())),
+            }
+        }
 
         if config.enable_symbol_and_section_labels {
             // Register all known function names from the symbol table

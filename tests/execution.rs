@@ -1,5 +1,5 @@
 #![allow(clippy::arithmetic_side_effects)]
-#![cfg(all(feature = "jit", not(target_os = "windows"), target_arch = "x86_64"))]
+//#![cfg(all(feature = "jit", not(target_os = "windows"), target_arch = "x86_64"))]
 // Copyright 2020 Solana Maintainers <maintainers@solana.com>
 //
 // Licensed under the Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0> or
@@ -2937,11 +2937,11 @@ fn test_reloc_64_64_sbpfv1() {
     // address of the entrypoint.
     //   [ 1] .text             PROGBITS        0000000000000120 000120 000018 00  AX  0   0  8
     test_interpreter_and_jit_elf!(
-        "tests/elfs/reloc_64_64_sbpfv1.so",
+        "tests/elfs/reloc_64_64.so",
         [],
         (),
-        TestContextObject::new(2),
-        ProgramResult::Ok(ebpf::MM_PROGRAM_START + 0x120),
+        TestContextObject::new(3),
+        ProgramResult::Ok(ebpf::MM_PROGRAM_START),
     );
 }
 
@@ -2966,11 +2966,11 @@ fn test_reloc_64_relative_sbpfv1() {
     //   [ 1] .text             PROGBITS        0000000000000120 000120 000018 00  AX  0   0  8
     //   [ 2] .rodata           PROGBITS        0000000000000138 000138 00000a 01 AMS  0   0  1
     test_interpreter_and_jit_elf!(
-        "tests/elfs/reloc_64_relative_sbpfv1.so",
+        "tests/elfs/reloc_64_relative.so",
         [],
         (),
-        TestContextObject::new(2),
-        ProgramResult::Ok(ebpf::MM_PROGRAM_START + 0x138),
+        TestContextObject::new(3),
+        ProgramResult::Ok(ebpf::MM_PROGRAM_START + 0x18),
     );
 }
 
@@ -2999,7 +2999,7 @@ fn test_reloc_64_relative_data_sbfv1() {
     // 00000000000001f8 <FILE>:
     // 63:       08 01 00 00 00 00 00 00
     test_interpreter_and_jit_elf!(
-        "tests/elfs/reloc_64_relative_data_sbpfv1.so",
+        "tests/elfs/reloc_64_relative_data.so",
         [],
         (),
         TestContextObject::new(3),
