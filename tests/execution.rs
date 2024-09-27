@@ -3002,8 +3002,8 @@ fn test_reloc_64_relative_data_sbfv1() {
         "tests/elfs/reloc_64_relative_data.so",
         [],
         (),
-        TestContextObject::new(3),
-        ProgramResult::Ok(ebpf::MM_PROGRAM_START + 0x108),
+        TestContextObject::new(4),
+        ProgramResult::Ok(ebpf::MM_PROGRAM_START + 0x20),
     );
 }
 

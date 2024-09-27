@@ -12,10 +12,11 @@ LD_COMMON="$LLVM_PATH/ld.lld -z notext -shared --Bdynamic -entry entrypoint --sc
 LD="$LD_COMMON"
 LD_V1=$LD_COMMON
 
-CLANG_CMD="$LLVM_PATH clang -Werror -target sbf -O2 -mcpu=v1 -fno-builtin -fPIC -o reloc_64_relative_data.o -c reloc_64_relative_data.c"
+CLANG_CMD="$LLVM_PATH/clang -Werror -target sbf -O2 -mcpu=v1 -fno-builtin -fno-PIC -fno-pie -static -o reloc_64_relative_data.o -c reloc_64_relative_data.c"
 
+# $CLANG_CMD
 #$RC_V1 --emit=llvm-ir reloc_64_relative.rs
-# $RC_V1 -o reloc_64_relative_data.o reloc_64_relative_data.rs
+# $RC_V1 -o reloc_64_64.o reloc_64_64.rs
 $LD_V1 -o reloc_64_relative_data.so reloc_64_relative_data.o
 
 #$RC -o relative_call.o relative_call.rs

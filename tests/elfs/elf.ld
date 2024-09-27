@@ -12,15 +12,15 @@ SECTIONS
   .text : { *(.text*) } :text
   .rodata : { *(.rodata*) } :rodata
   .data.rel.ro : { *(.data.rel.ro*) } :rodata
-  .dynamic : { *(.dynamic) } :dynamic
-  .dynsym : { *(.dynsym) } :data
-  .dynstr : { *(.dynstr) } :data
-  .rel.dyn : { *(.rel.dyn) } :data
   .data : { *(.data*) } :data
   .bss : { *(.bss*) } :data
   /DISCARD/ : {
       *(.eh_frame*)
       *(.gnu.hash*)
       *(.hash*)
+      *(.dynamic)
+      *(.dynsym)
+      *(.dynstr)
+      *(.rel.dyn)
     }
 }
