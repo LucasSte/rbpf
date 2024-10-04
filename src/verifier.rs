@@ -168,6 +168,17 @@ where
         .ok_or(VerifierError::InvalidFunction(key as usize))
 }
 
+fn check_call_target_relative(
+    rel_address: isize,
+    pc: isize,
+    function_registry: &FunctionRegistry<usize>
+) -> Result<(), VerifierError> {
+    check_call_target(
+        rel_address.saturating_add(pc).saturating_add(1) as u32,
+        function_registry
+    )
+}
+
 fn check_registers(
     insn: &ebpf::Insn,
     store: bool,
@@ -374,7 +385,7 @@ impl Verifier for RequisiteVerifier {
                 ebpf::JSLT_REG   => { check_jmp_offset(prog, insn_ptr, &function_range)?; },
                 ebpf::JSLE_IMM   => { check_jmp_offset(prog, insn_ptr, &function_range)?; },
                 ebpf::JSLE_REG   => { check_jmp_offset(prog, insn_ptr, &function_range)?; },
-                ebpf::CALL_IMM   if sbpf_version.static_syscalls() && insn.src != 0 => { check_call_target(insn.imm as u32, function_registry)?; },
+                ebpf::CALL_IMM   if sbpf_version.static_syscalls() && insn.src != 0 => { check_call_target_relative(insn.imm as isize, insn_ptr as isize, function_registry)?; },
                 ebpf::CALL_IMM   if sbpf_version.static_syscalls() && insn.src == 0 => { check_call_target(insn.imm as u32, syscall_registry)?; },
                 ebpf::CALL_IMM   => {},
                 ebpf::CALL_REG   => { check_callx_register(&insn, insn_ptr, sbpf_version)?; },

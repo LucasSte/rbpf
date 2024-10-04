@@ -690,7 +690,7 @@ impl<'a, C: ContextObject> JitCompiler<'a, C> {
                     }
 
                     if internal {
-                        if let Some((_function_name, target_pc)) = self.executable.get_function_registry().lookup_by_key(insn.imm as u32) {
+                        if let Some((_function_name, target_pc)) = self.executable.get_function_registry().lookup_by_relative_address(insn.imm as isize, self.pc as isize) {
                             self.emit_internal_call(Value::Constant64(target_pc as i64, true));
                             resolved = true;
                         }

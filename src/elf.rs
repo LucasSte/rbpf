@@ -805,22 +805,18 @@ impl<C: ContextObject> Executable<C> {
                 if target_pc < 0 || target_pc >= instruction_count as isize {
                     return Err(ElfError::RelativeJumpOutOfBounds(i));
                 }
+
                 let name = if config.enable_symbol_and_section_labels {
                     format!("function_{target_pc}")
                 } else {
                     String::default()
                 };
-                let key = function_registry.register_function_hashed_legacy(
+                let _ = function_registry.register_function_hashed_legacy(
                     loader,
                     !sbpf_version.static_syscalls(),
                     name.as_bytes(),
                     target_pc as usize,
                 )?;
-                let offset = i.saturating_mul(ebpf::INSN_SIZE).saturating_add(4);
-                let checked_slice = text_bytes
-                    .get_mut(offset..offset.saturating_add(4))
-                    .ok_or(ElfError::ValueOutOfBounds)?;
-                LittleEndian::write_u32(checked_slice, key);
             }
         }
 

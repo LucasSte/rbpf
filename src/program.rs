@@ -188,6 +188,12 @@ impl<T: Copy + PartialEq> FunctionRegistry<T> {
             .map(|(function_name, value)| (function_name.as_slice(), *value))
     }
 
+    /// Get a function by a call instruction relative jump address and its program counter
+    pub fn lookup_by_relative_address(&self, relative: isize, pc: isize) -> Option<(&[u8], T)> {
+        let key = pc.saturating_add(relative).saturating_add(1);
+        self.lookup_by_key(key as u32)
+    }
+
     /// Get a function by its name
     pub fn lookup_by_name(&self, name: &[u8]) -> Option<(&[u8], T)> {
         self.map
