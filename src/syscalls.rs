@@ -23,6 +23,7 @@
 
 use crate::{
     declare_builtin_function,
+    elf::ElfError,
     error::EbpfError,
     memory_region::{AccessType, MemoryMapping},
 };
@@ -186,5 +187,22 @@ declare_builtin_function!(
             arg1, arg2, arg3, arg4, arg5, memory_mapping as *const _
         );
         Ok(0)
+    }
+);
+
+declare_builtin_function!(
+    /// Tombstone function for when we call an invalid syscall (e.g. a syscall deactivated through a
+    /// feature gate
+    SyscallTombstone,
+    fn rust<T>(
+        _context_object: &mut T,
+        _arg1: u64,
+        _arg2: u64,
+        _arg3: u64,
+        _arg4: u64,
+        _arg5: u64,
+        _memory_mapping: &mut MemoryMapping,
+    ) -> Result<u64, Box<dyn std::error::Error>> {
+        Err(Box::new(ElfError::InvalidDenseFunctionIndex))
     }
 );
