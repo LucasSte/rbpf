@@ -18,7 +18,7 @@ use crate::{
     error::{EbpfError, ProgramResult},
     interpreter::Interpreter,
     memory_region::MemoryMapping,
-    program::{BuiltinFunction, BuiltinProgram, FunctionRegistry, SBPFVersion},
+    program::{BuiltinFunction, BuiltinProgram, OldFunctionRegistry, SBPFVersion},
     static_analysis::{Analysis, TraceLogEntry},
 };
 use std::{collections::BTreeMap, fmt::Debug};
@@ -120,7 +120,7 @@ impl<C: ContextObject> Executable<C> {
         text_bytes: &[u8],
         loader: Arc<BuiltinProgram<C>>,
         sbpf_version: SBPFVersion,
-        function_registry: FunctionRegistry<usize>,
+        function_registry: OldFunctionRegistry<usize>,
     ) -> Result<Self, EbpfError> {
         Executable::new_from_text_bytes(text_bytes, loader, sbpf_version, function_registry)
             .map_err(EbpfError::ElfError)
@@ -237,7 +237,7 @@ pub struct CallFrame {
 ///     ebpf,
 ///     elf::Executable,
 ///     memory_region::{MemoryMapping, MemoryRegion},
-///     program::{BuiltinProgram, FunctionRegistry, SBPFVersion},
+///     program::{BuiltinProgram, OldFunctionRegistry, SBPFVersion},
 ///     verifier::RequisiteVerifier,
 ///     vm::{Config, EbpfVm, TestContextObject},
 /// };
@@ -250,7 +250,7 @@ pub struct CallFrame {
 /// ];
 ///
 /// let loader = std::sync::Arc::new(BuiltinProgram::new_mock());
-/// let function_registry = FunctionRegistry::default();
+/// let function_registry = OldFunctionRegistry::default();
 /// let mut executable = Executable::<TestContextObject>::from_text_bytes(prog, loader.clone(), SBPFVersion::V2, function_registry).unwrap();
 /// executable.verify::<RequisiteVerifier>().unwrap();
 /// let mut context_object = TestContextObject::new(1);

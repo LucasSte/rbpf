@@ -21,10 +21,13 @@
 //! value. Hence some syscalls have unused arguments, or return a 0 value in all cases, in order to
 //! respect this convention.
 
+use crate::error::ProgramResult;
 use crate::{
     declare_builtin_function,
+    elf::ElfError,
     error::EbpfError,
     memory_region::{AccessType, MemoryMapping},
+    vm,
     vm::TestContextObject,
 };
 use std::{slice::from_raw_parts, str::from_utf8};
@@ -189,3 +192,37 @@ declare_builtin_function!(
         Ok(0)
     }
 );
+
+/// Tombstone function for when we call an invalid syscall (e.g. a syscall deactivated through a
+/// feature gate
+#[derive(Clone, PartialEq)]
+pub struct SyscallTombstone {}
+impl SyscallTombstone {
+    /// Tombstone function entrypoint
+    pub fn vm<T: vm::ContextObject>(
+        ctx: *mut vm::EbpfVm<T>,
+        _arg1: u64,
+        _arg2: u64,
+        _arg3: u64,
+        _arg4: u64,
+        _arg5: u64,
+    ) {
+        let vm = unsafe {
+            &mut *(ctx
+                .cast::<u64>()
+                .offset(-(vm::get_runtime_environment_key() as isize))
+                .cast::<vm::EbpfVm<T>>())
+        };
+        let config = vm.loader.get_config();
+        if config.enable_instruction_meter {
+            vm.context_object_pointer
+                .consume(vm.previous_instruction_meter - vm.due_insn_count);
+        }
+        vm.program_result = ProgramResult::Err(EbpfError::SyscallError(Box::new(
+            ElfError::InvalidSyscallCode,
+        )));
+        if config.enable_instruction_meter {
+            vm.previous_instruction_meter = vm.context_object_pointer.get_remaining();
+        }
+    }
+}

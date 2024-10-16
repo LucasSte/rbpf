@@ -10,7 +10,7 @@
 
 use crate::{
     ebpf,
-    program::{BuiltinProgram, FunctionRegistry, SBPFVersion},
+    program::{BuiltinProgram, OldFunctionRegistry, SBPFVersion},
     static_analysis::CfgNode,
     vm::ContextObject,
 };
@@ -113,7 +113,7 @@ fn jmp_reg_str(name: &str, insn: &ebpf::Insn, cfg_nodes: &BTreeMap<usize, CfgNod
 pub fn disassemble_instruction<C: ContextObject>(
     insn: &ebpf::Insn, 
     cfg_nodes: &BTreeMap<usize, CfgNode>,
-    function_registry: &FunctionRegistry<usize>,
+    function_registry: &OldFunctionRegistry<usize>,
     loader: &BuiltinProgram<C>,
     sbpf_version: &SBPFVersion,
 ) -> String {

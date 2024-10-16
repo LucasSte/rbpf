@@ -1,8 +1,10 @@
 //! Common interface for built-in and user supplied programs
+use crate::vm;
 use {
     crate::{
         ebpf,
         elf::ElfError,
+        syscalls,
         vm::{Config, ContextObject, EbpfVm},
     },
     std::collections::{btree_map::Entry, BTreeMap},
@@ -85,11 +87,200 @@ impl SBPFVersion {
 
 /// Holds the function symbols of an Executable
 #[derive(Debug, PartialEq, Eq)]
-pub struct FunctionRegistry<T> {
+pub enum FunctionRegistry<T> {
+    /// Sparse allows the registration of hashed symbols
+    Sparse(BTreeMap<u32, (Vec<u8>, T)>),
+    /// Dense allows the registration of symbols indexed by integers only
+    Dense(Vec<(Vec<u8>, T)>),
+}
+
+impl<T> FunctionRegistry<T> {
+    /// Create an empty sparse function registry
+    pub fn default_sparse() -> Self {
+        FunctionRegistry::Sparse(BTreeMap::new())
+    }
+
+    /// Create and empty dense function registry
+    pub fn default_dense() -> Self {
+        FunctionRegistry::Dense(Vec::new())
+    }
+}
+
+impl<T: Copy + PartialEq + vm::ContextObject> FunctionRegistry<BuiltinFunction<T>> {
+    /// Create a dense function registry with pre-allocated spaces.
+    pub fn new_dense(size: usize) -> Self {
+        FunctionRegistry::Dense(vec![
+            (b"tombstone".to_vec(), syscalls::SyscallTombstone::vm);
+            size
+        ])
+    }
+
+    /// Unregister a symbol again
+    pub fn unregister_function(&mut self, key: u32) {
+        match self {
+            FunctionRegistry::Sparse(map) => {
+                map.remove(&key);
+            }
+            FunctionRegistry::Dense(vec) => {
+                if key == 0 || key > vec.len() as u32 {
+                    return;
+                }
+                vec[key.saturating_sub(1) as usize] =
+                    (b"tombstone".to_vec(), syscalls::SyscallTombstone::vm);
+            }
+        }
+    }
+}
+
+impl<T: Copy + PartialEq> FunctionRegistry<T> {
+    /// Register a symbol with an explicit key
+    pub fn register_function(
+        &mut self,
+        key: u32,
+        name: impl Into<Vec<u8>>,
+        value: T,
+    ) -> Result<(), ElfError> {
+        match self {
+            FunctionRegistry::Sparse(map) => match map.entry(key) {
+                Entry::Vacant(entry) => {
+                    entry.insert((name.into(), value));
+                }
+                Entry::Occupied(entry) => {
+                    if entry.get().1 != value {
+                        return Err(ElfError::SymbolHashCollision(key));
+                    }
+                }
+            },
+            FunctionRegistry::Dense(vec) => {
+                if key == 0 || key > vec.len() as u32 {
+                    return Err(ElfError::InvalidSyscallCode);
+                }
+                vec[key.saturating_sub(1) as usize] = (name.into(), value);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Register a symbol with an implicit key
+    pub fn register_function_hashed(
+        &mut self,
+        name: impl Into<Vec<u8>>,
+        value: T,
+    ) -> Result<u32, ElfError> {
+        let name = name.into();
+        let key = ebpf::hash_symbol_name(name.as_slice());
+        self.register_function(key, name, value)?;
+        Ok(key)
+    }
+
+    /// Used for transitioning from SBPFv1 to SBPFv2
+    pub(crate) fn register_function_hashed_legacy<C: ContextObject>(
+        &mut self,
+        loader: &BuiltinProgram<C>,
+        hash_symbol_name: bool,
+        name: impl Into<Vec<u8>>,
+        value: T,
+    ) -> Result<u32, ElfError>
+    where
+        usize: From<T>,
+    {
+        let name = name.into();
+        let config = loader.get_config();
+        let key = if hash_symbol_name {
+            let hash = if name == b"entrypoint" {
+                ebpf::hash_symbol_name(b"entrypoint")
+            } else {
+                ebpf::hash_symbol_name(&usize::from(value).to_le_bytes())
+            };
+            if loader.get_function_registry().lookup_by_key(hash).is_some() {
+                return Err(ElfError::SymbolHashCollision(hash));
+            }
+            hash
+        } else {
+            usize::from(value) as u32
+        };
+        self.register_function(
+            key,
+            if config.enable_symbol_and_section_labels || name == b"entrypoint" {
+                name
+            } else {
+                Vec::default()
+            },
+            value,
+        )?;
+        Ok(key)
+    }
+
+    /// Iterate over all keys
+    pub fn keys(&self) -> Box<dyn Iterator<Item = u32> + '_> {
+        match self {
+            FunctionRegistry::Sparse(map) => Box::new(map.keys().copied()),
+            FunctionRegistry::Dense(vec) => Box::new(1..=(vec.len() as u32)),
+        }
+    }
+
+    /// Iterate over all entries
+    pub fn iter(&self) -> Box<dyn Iterator<Item = (u32, (&[u8], T))> + '_> {
+        match self {
+            FunctionRegistry::Sparse(map) => Box::new(
+                map.iter()
+                    .map(|(key, (name, value))| (*key, (name.as_slice(), *value))),
+            ),
+            FunctionRegistry::Dense(vec) => {
+                Box::new(vec.iter().enumerate().map(|(idx, value)| {
+                    (idx.saturating_add(1) as u32, (value.0.as_slice(), value.1))
+                }))
+            }
+        }
+    }
+
+    /// Get a function by its key
+    pub fn lookup_by_key(&self, key: u32) -> Option<(&[u8], T)> {
+        match self {
+            FunctionRegistry::Sparse(map) => map
+                .get(&key)
+                .map(|(function_name, value)| (function_name.as_slice(), *value)),
+            FunctionRegistry::Dense(vec) => {
+                if key == 0 {
+                    return None;
+                }
+                vec.get(key.saturating_sub(1) as usize)
+                    .map(|(function_name, value)| (function_name.as_slice(), *value))
+            }
+        }
+    }
+
+    /// Calculate memory size
+    pub fn mem_size(&self) -> usize {
+        let self_size = std::mem::size_of::<Self>();
+        let content_size =
+            match &self {
+                FunctionRegistry::Sparse(map) => {
+                    map.iter().fold(0, |state: usize, (_, (name, value))| {
+                        state.saturating_add(std::mem::size_of_val(value).saturating_add(
+                            std::mem::size_of_val(name).saturating_add(name.capacity()),
+                        ))
+                    })
+                }
+                FunctionRegistry::Dense(vec) => vec.iter().fold(0, |acc: usize, (name, value)| {
+                    acc.saturating_add(std::mem::size_of_val(value).saturating_add(
+                        std::mem::size_of_val(name).saturating_add(name.capacity()),
+                    ))
+                }),
+            };
+
+        self_size.saturating_add(content_size)
+    }
+}
+
+/// Holds the function symbols of an Executable
+#[derive(Debug, PartialEq, Eq)]
+pub struct OldFunctionRegistry<T> {
     pub(crate) map: BTreeMap<u32, (Vec<u8>, T)>,
 }
 
-impl<T> Default for FunctionRegistry<T> {
+impl<T> Default for OldFunctionRegistry<T> {
     fn default() -> Self {
         Self {
             map: BTreeMap::new(),
@@ -97,7 +288,7 @@ impl<T> Default for FunctionRegistry<T> {
     }
 }
 
-impl<T: Copy + PartialEq> FunctionRegistry<T> {
+impl<T: Copy + PartialEq> OldFunctionRegistry<T> {
     /// Register a symbol with an explicit key
     pub fn register_function(
         &mut self,
@@ -225,7 +416,7 @@ pub struct BuiltinProgram<C: ContextObject> {
     /// Holds the Config if this is a loader program
     config: Option<Box<Config>>,
     /// Function pointers by symbol
-    functions: FunctionRegistry<BuiltinFunction<C>>,
+    functions: OldFunctionRegistry<BuiltinFunction<C>>,
 }
 
 impl<C: ContextObject> PartialEq for BuiltinProgram<C> {
@@ -236,7 +427,7 @@ impl<C: ContextObject> PartialEq for BuiltinProgram<C> {
 
 impl<C: ContextObject> BuiltinProgram<C> {
     /// Constructs a loader built-in program
-    pub fn new_loader(config: Config, functions: FunctionRegistry<BuiltinFunction<C>>) -> Self {
+    pub fn new_loader(config: Config, functions: OldFunctionRegistry<BuiltinFunction<C>>) -> Self {
         Self {
             config: Some(Box::new(config)),
             functions,
@@ -244,7 +435,7 @@ impl<C: ContextObject> BuiltinProgram<C> {
     }
 
     /// Constructs a built-in program
-    pub fn new_builtin(functions: FunctionRegistry<BuiltinFunction<C>>) -> Self {
+    pub fn new_builtin(functions: OldFunctionRegistry<BuiltinFunction<C>>) -> Self {
         Self {
             config: None,
             functions,
@@ -255,7 +446,7 @@ impl<C: ContextObject> BuiltinProgram<C> {
     pub fn new_mock() -> Self {
         Self {
             config: Some(Box::default()),
-            functions: FunctionRegistry::default(),
+            functions: OldFunctionRegistry::default(),
         }
     }
 
@@ -265,7 +456,7 @@ impl<C: ContextObject> BuiltinProgram<C> {
     }
 
     /// Get the function registry
-    pub fn get_function_registry(&self) -> &FunctionRegistry<BuiltinFunction<C>> {
+    pub fn get_function_registry(&self) -> &OldFunctionRegistry<BuiltinFunction<C>> {
         &self.functions
     }
 
@@ -285,9 +476,10 @@ impl<C: ContextObject> std::fmt::Debug for BuiltinProgram<C> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         writeln!(f, "{:?}", unsafe {
             // `derive(Debug)` does not know that `C: ContextObject` does not need to implement `Debug`
-            std::mem::transmute::<&FunctionRegistry<BuiltinFunction<C>>, &FunctionRegistry<usize>>(
-                &self.functions,
-            )
+            std::mem::transmute::<
+                &OldFunctionRegistry<BuiltinFunction<C>>,
+                &OldFunctionRegistry<usize>,
+            >(&self.functions)
         })?;
         Ok(())
     }
@@ -358,7 +550,7 @@ mod tests {
     #[test]
     fn test_builtin_program_eq() {
         let mut function_registry_a =
-            FunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
+            OldFunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
         function_registry_a
             .register_function_hashed(*b"log", syscalls::SyscallString::vm)
             .unwrap();
@@ -366,7 +558,7 @@ mod tests {
             .register_function_hashed(*b"log_64", syscalls::SyscallU64::vm)
             .unwrap();
         let mut function_registry_b =
-            FunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
+            OldFunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
         function_registry_b
             .register_function_hashed(*b"log_64", syscalls::SyscallU64::vm)
             .unwrap();
@@ -374,7 +566,7 @@ mod tests {
             .register_function_hashed(*b"log", syscalls::SyscallString::vm)
             .unwrap();
         let mut function_registry_c =
-            FunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
+            OldFunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
         function_registry_c
             .register_function_hashed(*b"log_64", syscalls::SyscallU64::vm)
             .unwrap();

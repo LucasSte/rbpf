@@ -26,7 +26,7 @@ use solana_rbpf::{
     assembler::assemble,
     ebpf,
     elf::Executable,
-    program::{BuiltinFunction, BuiltinProgram, FunctionRegistry, SBPFVersion},
+    program::{BuiltinFunction, BuiltinProgram, OldFunctionRegistry, SBPFVersion},
     syscalls,
     verifier::{RequisiteVerifier, Verifier, VerifierError},
     vm::{Config, ContextObject, TestContextObject},
@@ -48,8 +48,8 @@ impl Verifier for TautologyVerifier {
         _prog: &[u8],
         _config: &Config,
         _sbpf_version: &SBPFVersion,
-        _function_registry: &FunctionRegistry<usize>,
-        _syscall_registry: &FunctionRegistry<BuiltinFunction<C>>,
+        _function_registry: &OldFunctionRegistry<usize>,
+        _syscall_registry: &OldFunctionRegistry<BuiltinFunction<C>>,
     ) -> std::result::Result<(), VerifierError> {
         Ok(())
     }
@@ -61,8 +61,8 @@ impl Verifier for ContradictionVerifier {
         _prog: &[u8],
         _config: &Config,
         _sbpf_version: &SBPFVersion,
-        _function_registry: &FunctionRegistry<usize>,
-        _syscall_registry: &FunctionRegistry<BuiltinFunction<C>>,
+        _function_registry: &OldFunctionRegistry<usize>,
+        _syscall_registry: &OldFunctionRegistry<BuiltinFunction<C>>,
     ) -> std::result::Result<(), VerifierError> {
         Err(VerifierError::NoProgram)
     }
@@ -128,7 +128,7 @@ fn test_verifier_err_endian_size() {
         prog,
         Arc::new(BuiltinProgram::new_mock()),
         SBPFVersion::V2,
-        FunctionRegistry::default(),
+        OldFunctionRegistry::default(),
     )
     .unwrap();
     executable.verify::<RequisiteVerifier>().unwrap();
@@ -147,7 +147,7 @@ fn test_verifier_err_incomplete_lddw() {
         prog,
         Arc::new(BuiltinProgram::new_mock()),
         SBPFVersion::V1,
-        FunctionRegistry::default(),
+        OldFunctionRegistry::default(),
     )
     .unwrap();
     executable.verify::<RequisiteVerifier>().unwrap();
@@ -165,10 +165,10 @@ fn test_verifier_err_lddw_cannot_be_last() {
                     enabled_sbpf_versions: SBPFVersion::V1..=highest_sbpf_version,
                     ..Config::default()
                 },
-                FunctionRegistry::default(),
+                OldFunctionRegistry::default(),
             )),
             highest_sbpf_version,
-            FunctionRegistry::default(),
+            OldFunctionRegistry::default(),
         )
         .unwrap();
         executable.verify::<RequisiteVerifier>().unwrap();
@@ -189,7 +189,7 @@ fn test_verifier_err_invalid_reg_dst() {
                     enabled_sbpf_versions: SBPFVersion::V1..=highest_sbpf_version,
                     ..Config::default()
                 },
-                FunctionRegistry::default(),
+                OldFunctionRegistry::default(),
             )),
         )
         .unwrap();
@@ -212,7 +212,7 @@ fn test_verifier_err_invalid_reg_src() {
                     enabled_sbpf_versions: SBPFVersion::V1..=highest_sbpf_version,
                     ..Config::default()
                 },
-                FunctionRegistry::default(),
+                OldFunctionRegistry::default(),
             )),
         )
         .unwrap();
@@ -233,7 +233,7 @@ fn test_verifier_resize_stack_ptr_success() {
                 enable_stack_frame_gaps: false,
                 ..Config::default()
             },
-            FunctionRegistry::default(),
+            OldFunctionRegistry::default(),
         )),
     )
     .unwrap();
@@ -282,7 +282,7 @@ fn test_verifier_err_callx_cannot_use_r10() {
                     enabled_sbpf_versions: SBPFVersion::V1..=highest_sbpf_version,
                     ..Config::default()
                 },
-                FunctionRegistry::default(),
+                OldFunctionRegistry::default(),
             )),
         )
         .unwrap();
@@ -341,7 +341,7 @@ fn test_verifier_err_unknown_opcode() {
         prog,
         Arc::new(BuiltinProgram::new_mock()),
         SBPFVersion::V2,
-        FunctionRegistry::default(),
+        OldFunctionRegistry::default(),
     )
     .unwrap();
     executable.verify::<RequisiteVerifier>().unwrap();
@@ -358,7 +358,7 @@ fn test_verifier_unknown_sycall() {
         prog,
         Arc::new(BuiltinProgram::new_mock()),
         SBPFVersion::V2,
-        FunctionRegistry::default(),
+        OldFunctionRegistry::default(),
     )
     .unwrap();
     executable.verify::<RequisiteVerifier>().unwrap();
@@ -370,7 +370,8 @@ fn test_verifier_known_syscall() {
         0x85, 0x00, 0x00, 0x00, 0xfe, 0xc3, 0xf5, 0x6b, // call 0x6bf5c3fe
         0x9d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // return
     ];
-    let mut function_registry = FunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
+    let mut function_registry =
+        OldFunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
     function_registry
         .register_function(0x6bf5c3fe, b"my_syscall", syscalls::SyscallString::vm)
         .unwrap();
@@ -381,7 +382,7 @@ fn test_verifier_known_syscall() {
             function_registry,
         )),
         SBPFVersion::V2,
-        FunctionRegistry::default(),
+        OldFunctionRegistry::default(),
     )
     .unwrap();
     executable.verify::<RequisiteVerifier>().unwrap();
@@ -457,7 +458,7 @@ fn test_sdiv_disabled() {
                         enabled_sbpf_versions: SBPFVersion::V1..=highest_sbpf_version,
                         ..Config::default()
                     },
-                    FunctionRegistry::default(),
+                    OldFunctionRegistry::default(),
                 )),
             )
             .unwrap();
@@ -484,7 +485,7 @@ fn return_instr() {
             prog,
             Arc::new(BuiltinProgram::new_mock()),
             sbpf_version,
-            FunctionRegistry::default(),
+            OldFunctionRegistry::default(),
         )
         .unwrap();
         let result = executable.verify::<RequisiteVerifier>();
@@ -506,7 +507,7 @@ fn return_in_v2() {
                 enabled_sbpf_versions: SBPFVersion::V2..=SBPFVersion::V2,
                 ..Config::default()
             },
-            FunctionRegistry::default(),
+            OldFunctionRegistry::default(),
         )),
     )
     .unwrap();
@@ -524,7 +525,7 @@ fn function_without_return() {
                 enabled_sbpf_versions: SBPFVersion::V2..=SBPFVersion::V2,
                 ..Config::default()
             },
-            FunctionRegistry::default(),
+            OldFunctionRegistry::default(),
         )),
     )
     .unwrap();

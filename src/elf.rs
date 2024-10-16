@@ -19,7 +19,7 @@ use crate::{
     },
     error::EbpfError,
     memory_region::MemoryRegion,
-    program::{BuiltinProgram, FunctionRegistry, SBPFVersion},
+    program::{BuiltinProgram, OldFunctionRegistry, SBPFVersion},
     verifier::Verifier,
     vm::{Config, ContextObject},
 };
@@ -107,6 +107,9 @@ pub enum ElfError {
     /// Invalid program header
     #[error("Invalid ELF program header")]
     InvalidProgramHeader,
+    /// Invalid syscall code
+    #[error("Invalid syscall code")]
+    InvalidSyscallCode,
 }
 
 impl From<ElfParserError> for ElfError {
@@ -244,7 +247,7 @@ pub struct Executable<C: ContextObject> {
     /// Address of the entry point
     entry_pc: usize,
     /// Call resolution map (hash, pc, name)
-    function_registry: FunctionRegistry<usize>,
+    function_registry: OldFunctionRegistry<usize>,
     /// Loader built-in program
     loader: Arc<BuiltinProgram<C>>,
     /// Compiled program and argument
@@ -329,7 +332,7 @@ impl<C: ContextObject> Executable<C> {
     }
 
     /// Get the function registry
-    pub fn get_function_registry(&self) -> &FunctionRegistry<usize> {
+    pub fn get_function_registry(&self) -> &OldFunctionRegistry<usize> {
         &self.function_registry
     }
 
@@ -338,7 +341,7 @@ impl<C: ContextObject> Executable<C> {
         text_bytes: &[u8],
         loader: Arc<BuiltinProgram<C>>,
         sbpf_version: SBPFVersion,
-        mut function_registry: FunctionRegistry<usize>,
+        mut function_registry: OldFunctionRegistry<usize>,
     ) -> Result<Self, ElfError> {
         let elf_bytes = AlignedMemory::from_slice(text_bytes);
         let entry_pc = if let Some((_name, pc)) = function_registry.lookup_by_name(b"entrypoint") {
@@ -419,7 +422,7 @@ impl<C: ContextObject> Executable<C> {
         }
 
         // relocate symbols
-        let mut function_registry = FunctionRegistry::default();
+        let mut function_registry = OldFunctionRegistry::default();
         Self::relocate(
             &mut function_registry,
             &loader,
@@ -771,7 +774,7 @@ impl<C: ContextObject> Executable<C> {
 
     /// Relocates the ELF in-place
     fn relocate(
-        function_registry: &mut FunctionRegistry<usize>,
+        function_registry: &mut OldFunctionRegistry<usize>,
         loader: &BuiltinProgram<C>,
         elf: &Elf64,
         elf_bytes: &mut [u8],
@@ -1164,7 +1167,7 @@ mod test {
 
     fn loader() -> Arc<BuiltinProgram<TestContextObject>> {
         let mut function_registry =
-            FunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
+            OldFunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
         function_registry
             .register_function_hashed(*b"log", syscalls::SyscallString::vm)
             .unwrap();
@@ -1928,7 +1931,7 @@ mod test {
                 reject_broken_elfs: true,
                 ..Config::default()
             },
-            FunctionRegistry::default(),
+            OldFunctionRegistry::default(),
         );
         let elf_bytes = std::fs::read("tests/elfs/syscall_reloc_64_32_sbpfv1.so")
             .expect("failed to read elf file");

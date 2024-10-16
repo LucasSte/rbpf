@@ -17,7 +17,7 @@ use solana_rbpf::{
     assembler::assemble,
     ebpf,
     memory_region::MemoryRegion,
-    program::{BuiltinFunction, BuiltinProgram, FunctionRegistry, SBPFVersion},
+    program::{BuiltinFunction, BuiltinProgram, OldFunctionRegistry, SBPFVersion},
     static_analysis::Analysis,
     verifier::RequisiteVerifier,
     vm::{Config, ContextObject, TestContextObject},
@@ -122,7 +122,7 @@ macro_rules! test_interpreter_and_jit_asm {
         {
             let mut config = $config;
             config.enable_instruction_tracing = true;
-            let mut function_registry = FunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
+            let mut function_registry = OldFunctionRegistry::<BuiltinFunction<TestContextObject>>::default();
             $(test_interpreter_and_jit!(register, function_registry, $location => $syscall_function);)*
             let loader = Arc::new(BuiltinProgram::new_loader(config, function_registry));
             let mut executable = assemble($source, loader).unwrap();

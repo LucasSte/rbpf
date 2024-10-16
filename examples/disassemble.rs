@@ -7,7 +7,7 @@
 extern crate solana_rbpf;
 use solana_rbpf::{
     elf::Executable,
-    program::{BuiltinProgram, FunctionRegistry, SBPFVersion},
+    program::{BuiltinProgram, OldFunctionRegistry, SBPFVersion},
     static_analysis::Analysis,
     vm::TestContextObject,
 };
@@ -36,7 +36,7 @@ fn main() {
         program,
         loader,
         SBPFVersion::V2,
-        FunctionRegistry::default(),
+        OldFunctionRegistry::default(),
     )
     .unwrap();
     let analysis = Analysis::from_executable(&executable).unwrap();

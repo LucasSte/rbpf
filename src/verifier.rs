@@ -14,7 +14,7 @@
 
 use crate::{
     ebpf,
-    program::{BuiltinFunction, FunctionRegistry, SBPFVersion},
+    program::{BuiltinFunction, OldFunctionRegistry, SBPFVersion},
     vm::{Config, ContextObject},
 };
 use thiserror::Error;
@@ -89,8 +89,8 @@ pub trait Verifier {
         prog: &[u8],
         config: &Config,
         sbpf_version: &SBPFVersion,
-        function_registry: &FunctionRegistry<usize>,
-        syscall_registry: &FunctionRegistry<BuiltinFunction<C>>,
+        function_registry: &OldFunctionRegistry<usize>,
+        syscall_registry: &OldFunctionRegistry<BuiltinFunction<C>>,
     ) -> Result<(), VerifierError>;
 }
 
@@ -156,7 +156,7 @@ fn check_jmp_offset(
 
 fn check_call_target<T>(
     key: u32,
-    function_registry: &FunctionRegistry<T>,
+    function_registry: &OldFunctionRegistry<T>,
 ) -> Result<(), VerifierError>
 where
     T: Copy,
@@ -220,7 +220,7 @@ pub struct RequisiteVerifier {}
 impl Verifier for RequisiteVerifier {
     /// Check the program against the verifier's rules
     #[rustfmt::skip]
-    fn verify<C: ContextObject>(prog: &[u8], _config: &Config, sbpf_version: &SBPFVersion, function_registry: &FunctionRegistry<usize>, syscall_registry: &FunctionRegistry<BuiltinFunction<C>>) -> Result<(), VerifierError> {
+    fn verify<C: ContextObject>(prog: &[u8], _config: &Config, sbpf_version: &SBPFVersion, function_registry: &OldFunctionRegistry<usize>, syscall_registry: &OldFunctionRegistry<BuiltinFunction<C>>) -> Result<(), VerifierError> {
         check_prog_len(prog)?;
 
         let program_range = 0..prog.len() / ebpf::INSN_SIZE;

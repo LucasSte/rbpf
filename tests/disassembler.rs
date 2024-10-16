@@ -10,7 +10,7 @@ extern crate solana_rbpf;
 use solana_rbpf::program::SBPFVersion;
 use solana_rbpf::{
     assembler::assemble,
-    program::{BuiltinProgram, FunctionRegistry},
+    program::{BuiltinProgram, OldFunctionRegistry},
     static_analysis::Analysis,
     vm::{Config, TestContextObject},
 };
@@ -27,7 +27,7 @@ macro_rules! disasm {
     }};
     ($src:expr, $config:expr) => {{
         let src = $src;
-        let loader = BuiltinProgram::new_loader($config, FunctionRegistry::default());
+        let loader = BuiltinProgram::new_loader($config, OldFunctionRegistry::default());
         let executable = assemble::<TestContextObject>(src, Arc::new(loader)).unwrap();
         let analysis = Analysis::from_executable(&executable).unwrap();
         let mut reasm = Vec::new();

@@ -13,7 +13,7 @@ use std::path::PathBuf;
 extern crate solana_rbpf;
 use solana_rbpf::{
     elf::Executable,
-    program::{BuiltinProgram, FunctionRegistry, SBPFVersion},
+    program::{BuiltinProgram, OldFunctionRegistry, SBPFVersion},
     static_analysis::Analysis,
     vm::TestContextObject,
 };
@@ -32,7 +32,7 @@ fn to_json(program: &[u8]) -> String {
         program,
         Arc::new(BuiltinProgram::new_mock()),
         SBPFVersion::V2,
-        FunctionRegistry::default(),
+        OldFunctionRegistry::default(),
     )
     .unwrap();
     let analysis = Analysis::from_executable(&executable).unwrap();

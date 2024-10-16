@@ -13,7 +13,7 @@ extern crate test;
 use solana_rbpf::{
     ebpf,
     memory_region::MemoryRegion,
-    program::{FunctionRegistry, SBPFVersion},
+    program::{OldFunctionRegistry, SBPFVersion},
     vm::Config,
 };
 use solana_rbpf::{
@@ -87,7 +87,7 @@ fn bench_jit_vs_interpreter(
         assembly,
         Arc::new(BuiltinProgram::new_loader(
             config,
-            FunctionRegistry::default(),
+            OldFunctionRegistry::default(),
         )),
     )
     .unwrap();
