@@ -90,7 +90,7 @@ pub enum FunctionRegistry<T> {
     /// Sparse allows the registration of hashed symbols
     Sparse(BTreeMap<u32, (Vec<u8>, T)>),
     /// Dense allows the registration of symbols indexed by integers only
-    Dense(Vec<(Vec<u8>, T)>),
+    Dense(Vec<(Option<Vec<u8>>, T)>),
 }
 
 impl<T> Default for FunctionRegistry<T> {
@@ -103,7 +103,7 @@ impl<T> Default for FunctionRegistry<T> {
 impl<T: Copy + PartialEq + ContextObject> FunctionRegistry<BuiltinFunction<T>> {
     /// Create a dense function registry with pre-allocated spaces.
     pub fn new_dense(size: usize) -> Self {
-        FunctionRegistry::Dense(vec![(b"tombstone".to_vec(), SyscallTombstone::vm); size])
+        FunctionRegistry::Dense(vec![(None, SyscallTombstone::vm); size])
     }
 }
 
@@ -118,7 +118,7 @@ impl<T: Default> FunctionRegistry<T> {
                 if key == 0 || key > vec.len() as u32 {
                     return;
                 }
-                vec[key.saturating_sub(1) as usize] = (b"tombstone".to_vec(), T::default());
+                vec[key.saturating_sub(1) as usize] = (None, T::default());
             }
         }
     }
@@ -147,7 +147,7 @@ impl<T: Copy + PartialEq> FunctionRegistry<T> {
                 if key == 0 || key > vec.len() as u32 {
                     return Err(ElfError::InvalidDenseFunctionIndex);
                 }
-                vec[key.saturating_sub(1) as usize] = (name.into(), value);
+                vec[key.saturating_sub(1) as usize] = (Some(name.into()), value);
             }
         }
 
@@ -208,7 +208,12 @@ impl<T: Copy + PartialEq> FunctionRegistry<T> {
     pub fn keys(&self) -> Box<dyn Iterator<Item = u32> + '_> {
         match self {
             FunctionRegistry::Sparse(map) => Box::new(map.keys().copied()),
-            FunctionRegistry::Dense(vec) => Box::new(1..=(vec.len() as u32)),
+            FunctionRegistry::Dense(vec) => Box::new(
+                vec.iter()
+                    .enumerate()
+                    .filter(|(_, (name, _))| name.is_some())
+                    .map(|(idx, _)| idx.saturating_add(1) as u32),
+            ),
         }
     }
 
@@ -220,11 +225,17 @@ impl<T: Copy + PartialEq> FunctionRegistry<T> {
                 map.iter()
                     .map(|(key, (name, value))| (*key, (name.as_slice(), *value))),
             ),
-            FunctionRegistry::Dense(vec) => {
-                Box::new(vec.iter().enumerate().map(|(idx, value)| {
-                    (idx.saturating_add(1) as u32, (value.0.as_slice(), value.1))
-                }))
-            }
+            FunctionRegistry::Dense(vec) => Box::new(
+                vec.iter()
+                    .enumerate()
+                    .filter(|(_, (name, _))| name.is_some())
+                    .map(|(idx, value)| {
+                        (
+                            idx.saturating_add(1) as u32,
+                            (value.0.as_ref().unwrap().as_slice(), value.1),
+                        )
+                    }),
+            ),
         }
     }
 
@@ -239,7 +250,10 @@ impl<T: Copy + PartialEq> FunctionRegistry<T> {
                     return None;
                 }
                 vec.get(key.saturating_sub(1) as usize)
-                    .map(|(function_name, value)| (function_name.as_slice(), *value))
+                    .filter(|item| item.0.is_some())
+                    .map(|(function_name, value)| {
+                        (function_name.as_ref().unwrap().as_slice(), *value)
+                    })
             }
         }
     }
@@ -253,29 +267,33 @@ impl<T: Copy + PartialEq> FunctionRegistry<T> {
                 .map(|(function_name, value)| (function_name.as_slice(), *value)),
             FunctionRegistry::Dense(vec) => vec
                 .iter()
-                .find(|(funtion_name, _)| funtion_name == name)
-                .map(|(function_name, value)| (function_name.as_slice(), *value)),
+                .filter(|(function_name, _)| function_name.is_some())
+                .find(|(function_name, _)| function_name.as_ref().unwrap() == name)
+                .map(|(function_name, value)| (function_name.as_ref().unwrap().as_slice(), *value)),
         }
     }
 
     /// Calculate memory size
     pub fn mem_size(&self) -> usize {
         let self_size = std::mem::size_of::<Self>();
-        let content_size =
-            match &self {
-                FunctionRegistry::Sparse(map) => {
-                    map.iter().fold(0, |state: usize, (_, (name, value))| {
-                        state.saturating_add(std::mem::size_of_val(value).saturating_add(
-                            std::mem::size_of_val(name).saturating_add(name.capacity()),
-                        ))
-                    })
-                }
-                FunctionRegistry::Dense(vec) => vec.iter().fold(0, |acc: usize, (name, value)| {
-                    acc.saturating_add(std::mem::size_of_val(value).saturating_add(
+        let content_size = match &self {
+            FunctionRegistry::Sparse(map) => {
+                map.iter().fold(0, |state: usize, (_, (name, value))| {
+                    state.saturating_add(std::mem::size_of_val(value).saturating_add(
                         std::mem::size_of_val(name).saturating_add(name.capacity()),
                     ))
-                }),
-            };
+                })
+            }
+            FunctionRegistry::Dense(vec) => vec.iter().fold(0, |state: usize, (name, value)| {
+                state.saturating_add(std::mem::size_of_val(value).saturating_add(
+                    std::mem::size_of_val(name).saturating_add(if let Some(vec) = name {
+                        vec.capacity()
+                    } else {
+                        0
+                    }),
+                ))
+            }),
+        };
 
         self_size.saturating_add(content_size)
     }
