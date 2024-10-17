@@ -105,7 +105,7 @@ impl<T> FunctionRegistry<T> {
     }
 }
 
-impl<T: Copy + PartialEq + ContextObject> FunctionRegistry<BuiltinFunction<T>> {
+impl<T: ContextObject> FunctionRegistry<BuiltinFunction<T>> {
     /// Create a dense function registry with pre-allocated spaces.
     pub fn new_dense(size: usize) -> Self {
         FunctionRegistry::Dense(vec![(b"tombstone".to_vec(), SyscallTombstone::vm); size])
@@ -488,5 +488,50 @@ mod tests {
         assert_eq!(builtin_program_a, builtin_program_b);
         let builtin_program_c = BuiltinProgram::new_loader(Config::default(), function_registry_c);
         assert_ne!(builtin_program_a, builtin_program_c);
+    }
+
+    #[test]
+    fn dense_registry() {
+        let mut dense_reg = FunctionRegistry::<usize>::Dense(vec![(b"func".to_vec(), 4); 4]);
+        dense_reg.unregister_function(1);
+        let res = dense_reg.lookup_by_key(1).unwrap();
+        assert_eq!(res.0, b"tombstone");
+        assert_eq!(res.1, 0);
+
+        let mut dense_reg = FunctionRegistry::<BuiltinFunction<TestContextObject>>::new_dense(2);
+        let res = dense_reg.register_function(0, b"syscall_u64", syscalls::SyscallU64::vm);
+        assert_eq!(res.err(), Some(ElfError::InvalidDenseFunctionIndex));
+
+        let res = dense_reg.register_function(5, b"syscall_u64", syscalls::SyscallU64::vm);
+        assert_eq!(res.err(), Some(ElfError::InvalidDenseFunctionIndex));
+
+        let res = dense_reg.register_function(1, b"syscall_u64", syscalls::SyscallU64::vm);
+        assert!(res.is_ok());
+
+        let res = dense_reg.register_function_hashed(b"syscall_string", syscalls::SyscallString::vm);
+        assert_eq!(res.err(), Some(ElfError::InvalidDenseFunctionIndex));
+
+        for (expected, received) in dense_reg.keys().zip(1..=2) {
+            assert_eq!(expected, received);
+        }
+
+        for (idx, item) in dense_reg.iter() {
+            if idx == 1 {
+                assert_eq!(item.0, b"syscall_u64");
+            } else {
+                assert_eq!(item.0, b"tombstone");
+            }
+        }
+
+        let res = dense_reg.lookup_by_key(0);
+        assert!(res.is_none());
+        let res = dense_reg.lookup_by_key(1);
+        assert_eq!(res.unwrap().0, b"syscall_u64");
+
+        let res = dense_reg.lookup_by_name(b"syscall_u64");
+        assert!(res.is_some());
+
+        let size = dense_reg.mem_size();
+        assert_eq!(size, 116);
     }
 }
