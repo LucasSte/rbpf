@@ -115,7 +115,7 @@ pub fn disassemble_instruction<C: ContextObject>(
     cfg_nodes: &BTreeMap<usize, CfgNode>,
     function_registry: &FunctionRegistry<usize>,
     loader: &BuiltinProgram<C>,
-    sbpf_version: &SBPFVersion,
+    sbpf_version: SBPFVersion,
 ) -> String {
     let name;
     let desc;
@@ -271,7 +271,7 @@ pub fn disassemble_instruction<C: ContextObject>(
                 function_name
             } else {
                 name = "syscall";
-                loader.get_sparse_function_registry().lookup_by_key(insn.imm as u32).map(|(function_name, _)| String::from_utf8_lossy(function_name).to_string()).unwrap_or_else(|| "[invalid]".to_string())
+                loader.get_function_registry(sbpf_version).lookup_by_key(insn.imm as u32).map(|(function_name, _)| String::from_utf8_lossy(function_name).to_string()).unwrap_or_else(|| "[invalid]".to_string())
             };
             desc = format!("{name} {function_name}");
         },
